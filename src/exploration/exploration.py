@@ -4,7 +4,8 @@ import pandas as pd
 import numpy as np
 import pickle
 
-from Marklines import Marklines
+from ..data_collection import Marklines
+# from Marklines import Marklines
 from typing import List, Dict, Any
 from jgraph import *
 from collections import Counter
