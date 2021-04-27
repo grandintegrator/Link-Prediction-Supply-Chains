@@ -4,8 +4,7 @@ import pandas as pd
 import numpy as np
 import pickle
 
-from ..data_collection import Marklines
-# from Marklines import Marklines
+from Marklines import Marklines
 from typing import List, Dict, Any
 from jgraph import *
 from collections import Counter
@@ -44,7 +43,7 @@ class VisualiseGraph(object):
         Args:
             path: Location of the MarkLines pickled object
         """
-
+        from Marklines import Marklines
         # load existing graph object
         self.multi_pair_frame = None
         self.graph_object = pickle.load(open(path, "rb"))
@@ -293,7 +292,7 @@ class VisualiseGraph(object):
         #                                 no_shared_products_adjacency.columns))
 
         candidate_edges_no_shared_products = list(set(no_shared_products_list))
-        print(candidate_edges_no_shared_products)
+        # print(candidate_edges_no_shared_products)
         # Flush memory
 
         ########################################################################
@@ -381,8 +380,6 @@ class VisualiseGraph(object):
         #     log_scale=True,
         # )
         # plt.show()
-
-
 
 
 if __name__ == '__main__':

@@ -1,5 +1,9 @@
 import os
 import argparse
+import pickle
+
+path = 'data/02_intermediate/marklinesEdges.p'
+graph_object = pickle.load(open(path, "rb"))
 
 
 def main(arguments) -> None:
