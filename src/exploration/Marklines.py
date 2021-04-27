@@ -4,8 +4,8 @@ from cleanco import prepare_terms, basename
 from datetime import datetime
 import networkx as nx
 
-from utils import cleanCompany, splitCustomers, splitMarklinesList, stripCompany, getTime, cleanProduct
-from utils import get
+from src.utils import cleanCompany, splitCustomers, splitMarklinesList, stripCompany, getTime, cleanProduct, get
+# from utils import get
 
 import numpy as np
 

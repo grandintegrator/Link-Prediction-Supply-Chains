@@ -4,7 +4,11 @@ import pandas as pd
 import numpy as np
 import pickle
 
-from Marklines import Marklines
+
+# from data_collection import Marklines
+# from src.data_collection import Marklines
+# from Marklines import Marklines
+
 from typing import List, Dict, Any
 from jgraph import *
 from collections import Counter
@@ -38,7 +42,7 @@ logging.basicConfig()
 
 
 class VisualiseGraph(object):
-    def __init__(self, path: str = 'data/02_intermediate/marklinesEdges.p'):
+    def __init__(self, path: str = 'C:/Users/ashwin/Documents/Projects/Link-Prediction-Supply-Chains/data/02_intermediate/marklinesEdges.p'):
         """
         Args:
             path: Location of the MarkLines pickled object

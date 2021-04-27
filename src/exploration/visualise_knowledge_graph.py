@@ -1,7 +1,9 @@
 import dash
 import dash_cytoscape as cyto
 import dash_html_components as html
-from exploration.visualise_graph import VisualiseGraph
+
+from src.exploration.visualise_graph import VisualiseGraph
+
 # from exploration import VisualiseGraph
 
 app = dash.Dash(__name__)
