@@ -32,9 +32,7 @@ pd.set_option('display.max_columns', 500)
 pd.set_option('display.width', 1000)
 
 # Logger preferences
-logger = logging.getLogger(__name__)
-logging.getLogger().setLevel(logging.INFO)
-logging.basicConfig()
+
 
 
 class VisualiseGraph(object):
@@ -49,8 +47,6 @@ class VisualiseGraph(object):
         self.graph_object = pickle.load(open(path, "rb"))
         logger.info('NetworkX graph loaded')
 
-    # import networkx as nx
-    # nx.is_bipartite()
     # @staticmethod
     # def get_summary_statistics(self) -> Dict[str, Any]:
     #     """Returns some traditional summary statistics at the graph level
@@ -241,120 +237,104 @@ class VisualiseGraph(object):
         Returns:
             None
         """
+        import dask.dataframe as dd
         ########################################################################
         # Analysis from known edges within the graph - bipartite projection
         ########################################################################
         # Get the unique company nodes and product nodes  from bG graph
-        company_nodes = list(set([x[1] for x in self.graph_object.bG.edges]))
-        product_nodes = list(set([x[0] for x in self.graph_object.bG.edges]))
-
-        company_nodes = list(set(company_nodes) - set(product_nodes))
-
-        company_nodes = company_nodes[1:10]
-        # Weighted bipartite projection - weights contain shared edges
-        # TODO: smaller subset on BOTH sides
-        # TODO:
-        bipartite_projection = (
-            bipartite.weighted_projected_graph(self.graph_object.bG,
-                                               nodes=company_nodes)
-        )
-        nx.is_bipartite(self.graph_object.bG)
-        # # Get the weight values from the bipartite projection
-        # weights_with_edges = \
-        #     list(nx.get_edge_attributes(bipartite_projection, "weight").values())
+        # company_nodes = list(set([x[1] for x in self.graph_object.bG.edges]))
+        # product_nodes = list(set([x[0] for x in self.graph_object.bG.edges]))
         #
-        # weight_frame = (
-        #     pd.DataFrame({'weights_with_edges': weights_with_edges[::100],
-        #                   'weights_without_edges': weights_with_edges[::100]})
-        # )
+        # company_nodes = list(set(company_nodes) - set(product_nodes))
 
-        # adjacency_matrix = nx.adj_matrix(bipartite_projection)
-        # edge_list_bipartite = \
-        #     nx.convert_matrix.to_pandas_edgelist(bipartite_projection)
+        # Weighted bipartite projection - weights contain shared edges
+        companies = set(self.graph_object.supplierProductdf['companyName'].values)
+        products = set(self.graph_object.supplierProductdf['product'].values)
+
+        # Intersected products that should never have been there
+        intersection_products = products.intersection(companies)
+        del companies, products
+
+        supplier_product_df_fixed = (
+            self.graph_object.supplierProductdf
+                .loc[~self.graph_object.supplierProductdf['companyName']
+                .isin(intersection_products)]
+        )
+
+        # supplier_product_df_fixed = supplier_product_df_fixed.loc[1:10000, :]
+
+        # About 2k rows were duplicated, not much, but something!
+        supplier_product_df_fixed = supplier_product_df_fixed.drop_duplicates()
+
+        # Create an empty NetworkX graph
+        bipartite_graph = nx.Graph()
+
+        # Add in data into empty graph object
+        for company, product in zip(supplier_product_df_fixed['companyName'],
+                                    supplier_product_df_fixed['product']):
+            # Add edges one by one into a new graph which will be bipartite
+            bipartite_graph.add_edge(company, product)
+
+        assert nx.is_bipartite(bipartite_graph)
+
+        projected_nodes = supplier_product_df_fixed['companyName'].unique()
+        bipartite_projection = (
+            bipartite.weighted_projected_graph(bipartite_graph,
+                                               nodes=projected_nodes)
+        )
+        del projected_nodes
+        logger.info('Create weighted projected graph.')
 
         # Get the Adjacency matrix of the bipartite projection graph
         adjacency_bipartite = (
             nx.to_pandas_adjacency(bipartite_projection)
         )
+        logger.info('Created adjacency matrix..')
+        # Convert to a dask dataframe.
+        adjacency_bipartite = dd.from_pandas(adjacency_bipartite,
+                                             npartitions=100)
 
-        del bipartite_projection
+        del bipartite_projection, bipartite_graph, supplier_product_df_fixed
+        logger.info('Cleaned cache and starting compute heavy work')
         ########################################################################
         # Non-existing links --- using the adjacency matrix 0s entries
         ########################################################################
-        # Get only the companies who don't share a common product
-        no_shared_products_adjacency = (
-            adjacency_bipartite[adjacency_bipartite == 0]
+        no_shared_products_candidates = []
+        shared_products_with_connection = 0
+        for col in tqdm(adjacency_bipartite.columns):
+            # Handle the no shared weights in projection side first:
+            zero_cond = adjacency_bipartite[col] == 0
+            zero_connections = adjacency_bipartite.loc[zero_cond].index
+            # zero_connections = adjacency_bipartite.index[zero_cond]
+            candidates = [(col, new_product) for new_product in zero_connections.compute()
+                          if col != new_product]
+            for candidate in candidates:
+                if self.graph_object.G.has_edge(candidate[0], candidate[1]):
+                    # Number of edges out of all edges that had no sharing
+                    shared_products_with_connection += 1
+
+            # shared_weights = adjacency_bipartite.index[~zero_cond]
+            shared_weights = adjacency_bipartite.loc[~zero_cond].index
+            candidates = [(col, new_product) for new_product in shared_weights.compute()
+                          if col != new_product]
+            for candidate in candidates:
+                if self.graph_object.G.has_edge(candidate[0], candidate[1]):
+                    shared_weight = adjacency_bipartite.loc[candidate[0],
+                                                            candidate[1]]
+                    no_shared_products_candidates.extend([shared_weight])
+
+        logger.info(f'Found {shared_products_with_connection:.2f} shares')
+        percentage_shared = (
+            shared_products_with_connection/len(self.graph_object.G.edges())*100
         )
-        # Get candidates for checking
-        no_shared_products_list = [(i, j) for i, j in zip(no_shared_products_adjacency.index,
-                                                          no_shared_products_adjacency.columns)]
-        # no_shared_products_list = list((no_shared_products_adjacency.index,
-        #                                 no_shared_products_adjacency.columns))
+        logger.info(f"Implying only {percentage_shared:.2f}% of links didn't"
+                    f" share products")
+        with open('data/02_intermediate/no_shared_products_candidates.pkl',
+                  'wb') as f:
+            pickle.dump(no_shared_products_candidates, f)
 
-        candidate_edges_no_shared_products = list(set(no_shared_products_list))
-        # print(candidate_edges_no_shared_products)
-        # Flush memory
+        del adjacency_bipartite
 
-        ########################################################################
-        # Summarise for when companies do buy-sell from one another
-        ########################################################################
-        # nx.to_pandas_edgelist()
-        # edge_list_bipartite_single == no common edges amongst node-source
-        # edge_list_bipartite_single = (
-        #     adjacency_bipartite.loc[adjacency_bipartite['weight'] == 0, :]
-        # )
-        # # edge_list_bipartite_rest == >1 common edges amongst node-source
-        # edge_list_bipartite_rest = (
-        #     adjacency_bipartite.loc[~(adjacency_bipartite['weight'] == 0), :]
-        # )
-        #
-        # # Loop through source, target in no links projection
-        # for source, target in zip(edge_list_bipartite_single.head()['source'],
-        #                           edge_list_bipartite_single.head()['target']):
-        #     if (source, target) in self.graph_object.G.edges:
-        #         print('single-edge')
-        #
-
-
-        # non_edges = []
-        # num = 0
-        # for _ in tqdm(range(25000)):
-        #     random_selected_company = np.random.choice(product_nodes, size=1,
-        #                                                replace=False)
-        #     random_selected_product = np.random.choice(company_nodes, size=1,
-        #                                                replace=False)
-        #     pair_nodes = (random_selected_company[0], random_selected_product[0])
-        #     if pair_nodes not in self.graph_object.bG.edges:
-        #         num += 1
-        #         non_edges.append(list(pair_nodes))
-        #
-        # # Create a bipartite projection of the anti graph
-        # bg_anti = nx.from_edgelist(non_edges)
-        # company_nodes_anti = [x[1] for x in list(bg_anti.edges)]
-        # anti_bipartite_projection = (
-        #     bipartite.weighted_projected_graph(bg_anti,
-        #                                        nodes=company_nodes_anti)
-        # )
-        # weights_no_edges = \
-        #     nx.get_edge_attributes(anti_bipartite_projection, "weight").values()
-        # new_weight_frame = pd.DataFrame()
-        # if len(weights_no_edges) < weight_frame['weights_with_edges'].shape[0]:
-        #     new_weight_frame['weights_with_edges'] = np.random.choice(
-        #         weight_frame['weights_with_edges'], size=len(weights_no_edges),
-        #         replace=False
-        #     )
-        #     new_weight_frame['weights_without_edges'] = weights_no_edges
-        # else:
-        #     new_weight_frame['weights_with_edges'] = \
-        #         weight_frame['weights_with_edges']
-        #
-        #     new_weight_frame['weights_without_edges'] = np.random.choice(
-        #         list(weights_no_edges),
-        #         size=new_weight_frame['weights_with_edges'].shape[0],
-        #         replace=False
-        #     )
-        #
-        # del weight_frame, anti_bipartite_projection
         ########################################################################
         # Plot the difference in the distributions for contrasting
         ########################################################################
@@ -383,10 +363,14 @@ class VisualiseGraph(object):
 
 
 if __name__ == '__main__':
+    logger = logging.getLogger(__name__)
+    log_fmt = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    logging.getLogger().setLevel(logging.INFO)
+    logging.basicConfig(level=logging.INFO, format=log_fmt)
+
     graph_class = VisualiseGraph()
     graph_class.product_overlap_chart()
     # graph_class.get_degree_distribution()
     # graph_class.create_multi_pair_frame(sample_portion=2,
     #                                     product_product_n=10)
 
-# integrated gradients

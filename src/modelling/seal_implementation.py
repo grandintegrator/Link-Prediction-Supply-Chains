@@ -12,7 +12,6 @@ import logging
 import dgl
 import torch
 import itertools
-
 from tqdm import tqdm
 from dgl.nn import SAGEConv
 
@@ -31,7 +30,7 @@ logging.basicConfig()
 # LOAD DATASET FROM NETWORKX
 ################################################################################
 class DataLoaderDGL(object):
-    def __init__(self, path: str = 'data/02_intermediate/marklinesEdges.p'):
+    def __init__(self, path: str = '../data/02_intermediate/marklinesEdges.p'):
         """Loads NetworkX graph from pickle dataset into a DGL Graph Object
         Args:
             path: Location of the MarkLines pickled object
