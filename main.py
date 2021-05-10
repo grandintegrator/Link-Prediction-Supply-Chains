@@ -5,6 +5,7 @@ import logging
 import numpy as np
 import yaml
 from managers.trainer import Trainer
+from managers.evaluator import Evaluator
 from warnings import simplefilter
 from ingestion.dataloader import SCDataLoader
 
@@ -46,6 +47,16 @@ def main(run_args) -> None:
 
     logging.info('Starting training of model...')
     trainer.train()
+
+    logging.info('Evaluating model on testing data...')
+    test_loader = data_loader.get_test_data_loader()
+    evaluator = Evaluator(params=config, model=trainer.model,
+                          testing_data_loader=test_loader)
+    metrics_test = evaluator.evaluate()
+    logging.info('============================================================')
+    logging.info(f'After {config.modelling.num_epochs} epochs \n')
+    logging.info(f"Got an AUC of  {metrics_test['auc_mean']}")
+    logging.info('============================================================')
 
 
 if __name__ == '__main__':

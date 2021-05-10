@@ -361,10 +361,10 @@ class SCDataLoader(object):
             {etype: self.training_data.edges(etype=etype, form='eid')
              for etype in self.training_data.etypes}
 
-        # sampler = dgl.dataloading.MultiLayerFullNeighborSampler([30, 30])
-        sampler = (
-            dgl.dataloading.MultiLayerNeighborSampler([60, 60])
-        )
+        sampler = dgl.dataloading.MultiLayerFullNeighborSampler(2)
+        # sampler = (
+        #     dgl.dataloading.MultiLayerNeighborSampler(2)
+        # )
         negative_sampler = dgl.dataloading.negative_sampler.Uniform(10)
 
         train_data_loader = dgl.dataloading.EdgeDataLoader(
@@ -373,9 +373,44 @@ class SCDataLoader(object):
             batch_size=self.params.modelling.batch_size,
             shuffle=True,
             drop_last=False,
+            # pin_memory=True,
             num_workers=self.params.modelling.num_workers)
         return train_data_loader
 
-    def test_data_loader(self):
-        return None
+    def get_test_data_loader(self) -> dgl.dataloading.EdgeDataLoader:
+        # Creates testing data loader for evaluation
+        self.get_training_testing()
+        n_companies = self.testing_data.num_nodes('company')
+        n_products = self.testing_data.num_nodes('product')
+        n_hetero_features = self.params.modelling.num_node_features
+
+        # Initialise the training data features
+        self.testing_data.nodes['company'].data['feature'] = (
+            torch.randn(n_companies, n_hetero_features)
+        )
+
+        self.testing_data.nodes['product'].data['feature'] = (
+            torch.randn(n_products, n_hetero_features)
+        )
+        graph_eid_dict = \
+            {etype: self.testing_data.edges(etype=etype, form='eid')
+             for etype in self.testing_data.etypes}
+
+        # sampler = dgl.dataloading.MultiLayerFullNeighborSampler([30, 30])
+        # sampler = (
+        #     dgl.dataloading.MultiLayerNeighborSampler([60, 60])
+        # )
+
+        sampler = dgl.dataloading.MultiLayerFullNeighborSampler(2)
+        negative_sampler = dgl.dataloading.negative_sampler.Uniform(10)
+
+        test_data_loader = dgl.dataloading.EdgeDataLoader(
+            self.testing_data, graph_eid_dict, sampler,
+            negative_sampler=negative_sampler,
+            batch_size=self.params.modelling.batch_size,
+            shuffle=True,
+            drop_last=False,
+            # pin_memory=True,
+            num_workers=self.params.modelling.num_workers)
+        return test_data_loader
 
