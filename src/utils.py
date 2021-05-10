@@ -16,6 +16,20 @@ from functools import wraps
 import torch
 from torch.multiprocessing import Queue
 import dgl
+import logging
+from model.dgl.StochasticRGCN import Model
+
+
+def create_model(params, graph_edge_types):
+    # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    # in_features, hidden_features, out_features, num_classes,
+    # etypes):
+    model = Model(in_features=params.modelling.num_node_features,
+                  hidden_features=params.modelling.num_hidden_graph_layers,
+                  out_features=params.modelling.num_node_features,
+                  num_classes=params.modelling.num_classes,
+                  etypes=graph_edge_types)
+    return model
 
 
 def getTime():
@@ -251,3 +265,8 @@ def plotCurves(__df__, columns):
     plt.show()
 
 
+def initialize_experiment(params):
+    # Logging options
+    logger = logging.getLogger(__name__)
+    logging.getLogger().setLevel(logging.INFO)
+    logging.basicConfig()

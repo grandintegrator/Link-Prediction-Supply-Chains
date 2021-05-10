@@ -32,7 +32,9 @@ pd.set_option('display.max_columns', 500)
 pd.set_option('display.width', 1000)
 
 # Logger preferences
-
+logger = logging.getLogger(__name__)
+logging.getLogger().setLevel(logging.INFO)
+logging.basicConfig()
 
 
 class VisualiseGraph(object):
@@ -71,7 +73,7 @@ class VisualiseGraph(object):
                           yaxis_title=r"P(n)",
                           xaxis_title=r"n - Node Degree",
                           # legend_title='Legend',
-                          font=dict(size=16))
+                          font=dict(size=24))
         fig.write_html(out_path + 'G_degree_distribution.html')
 
         if loglog:
@@ -92,8 +94,9 @@ class VisualiseGraph(object):
             fig.update_layout(font_family='Arial',
                               title='Log Log of Degree Distribution',
                               yaxis_title='Fraction of Nodes (log)',
-                              xaxis_title='Degree (log)'
-                              )
+                              xaxis_title='Degree (log)',
+                              font=dict(size=24))
+
             fig.write_html(out_path + 'G_log_log.html')
 
     def build_igraph_plot(self, out_path: str = 'data/04_results/') -> None:
@@ -103,6 +106,9 @@ class VisualiseGraph(object):
             out_path: Storage location of output eps file
 
         """
+        from igraph import Graph
+        from igraph import plot
+
         igraph_object = Graph()
         converted_igraph = igraph_object.from_networkx(g=self.graph_object.G)
 
@@ -261,7 +267,7 @@ class VisualiseGraph(object):
                 .isin(intersection_products)]
         )
 
-        # supplier_product_df_fixed = supplier_product_df_fixed.loc[1:10000, :]
+        supplier_product_df_fixed = supplier_product_df_fixed.loc[1:10000, :]
 
         # About 2k rows were duplicated, not much, but something!
         supplier_product_df_fixed = supplier_product_df_fixed.drop_duplicates()
