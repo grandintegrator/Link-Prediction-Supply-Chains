@@ -51,4 +51,9 @@ Thumbs.db
 src/scratches
 datasets/
 .ipynb_checkpoints/
-data/
+
+data/01_raw
+data/02_intermediate
+data/03_models
+data/04_results
+

@@ -80,6 +80,13 @@ class Trainer(object):
                 #     blocks = [b.to(torch.device('cuda')) for b in blocks]
                 #     positive_graph = positive_graph.to(torch.device('cuda'))
                 #     negative_graph = negative_graph.to(torch.device('cuda'))
+
+                # Need to ensure that all node types have been captured
+                if any([b.num_edges(edge_type) == 0 for b in blocks
+                        for edge_type in blocks[0].etypes]):
+                    # Jump to next mini-batch because this one is invalid.
+                    continue
+
                 input_features = blocks[0].srcdata['feature']
                 pos_score, neg_score = self.model(positive_graph=positive_graph,
                                                   negative_graph=negative_graph,
@@ -106,10 +113,12 @@ class Trainer(object):
                     break
 
     def train(self):
+        # wandb login --relogin of you would like to log data into W&B
         wandb.init()
         wandb.watch(self.model, self.compute_loss, log="all",
                     log_freq=self.params.modelling.log_freq)
         for _ in range(1):
+            # self.model.train()
             self.train_epoch()
 
     def __repr__(self):
