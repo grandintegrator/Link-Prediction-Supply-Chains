@@ -4,6 +4,27 @@ import torch.nn.functional as F
 
 import dgl.function as fn
 from dgl.nn.pytorch.conv.sageconv import SAGEConv
+import dgl.nn as dglnn
+
+
+class StochasticTwoLayerRGCN(nn.Module):
+    def __init__(self, in_feat, hidden_feat, out_feat, rel_names):
+        super().__init__()
+        self.conv1 = dglnn.HeteroGraphConv({
+                rel: dglnn.SAGEConv(in_feat, hidden_feat,
+                                    aggregator_type='mean')
+                for rel in rel_names
+            })
+        self.conv2 = dglnn.HeteroGraphConv({
+                rel: dglnn.SAGEConv(hidden_feat, out_feat,
+                                    aggregator_type='mean')
+                for rel in rel_names
+            })
+
+    def forward(self, blocks, x):
+        x = self.conv1(blocks[0], x)
+        x = self.conv2(blocks[1], x)
+        return x
 
 
 class BaseRGCN(nn.Module):

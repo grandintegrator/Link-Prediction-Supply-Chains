@@ -54,15 +54,15 @@ for row in range(pair_frame.shape[0]):
 app.layout = html.Div([
     cyto.Cytoscape(
         id='cytoscape-automotive_network',
-        layout={'name': 'cose'},  # breadthfirst - physics
-        style={'width': '100%', 'height': '1000px'},
+        layout={'name': 'breadthfirst'},  # cose - physics
+        style={'width': '100%', 'height': '1000px', 'font-size': '24'},
         elements=edge_dict_list + node_dict_list,
         stylesheet=[
             # Edge selectors
             {
                 'selector': 'edge',
                 'style': {
-                    'label': 'data(relation_type)'}
+                    'label': 'data(relation_type)', 'font-size': '24'}
             },
             # Group selectors
             {
@@ -70,7 +70,8 @@ app.layout = html.Div([
                 'style': {
                     'content': 'data(id)',
                     'width': '80%',
-                    'height': '80%'
+                    'height': '80%',
+                    'font-size': '24'
                 }
             },
             # Class selectors
@@ -84,7 +85,8 @@ app.layout = html.Div([
             {
                 'selector': '.triangle',
                 'style': {
-                    'shape': 'triangle'
+                    'shape': 'triangle',
+                    'font-size': '24'
                 }
             }
         ]
