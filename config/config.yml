@@ -1,0 +1,22 @@
+data:
+  path: "/Users/tim-bhp/PycharmProjects/link_predictions_supply_chains/Link-Prediction-Supply-Chains/data/02_intermediate"
+
+modelling:
+  num_node_features: 15
+  num_hidden_graph_layers: 64
+  num_negative_samples: 3
+  num_classes: 2
+  batch_size: 64 # Mini batch size for the graph
+  num_epochs: 9000
+  evaluate_every: 3 # How many epochs should pass before an evaluation run?
+  test_p: 0.1
+  num_workers: 0
+  loss: "binary_cross_entropy" # Or could also be 'margin'
+  log_freq: 20
+
+net:
+  lr: 1e-4
+  optimiser: "Adam"
+  l2_regularisation: 5e-4 # Regularisation term for the GNN weights
+  loss: "binary_cross_entropy" # Or could also be 'margin'
+#  inference_edge: ('company', 'buys_from', 'company')
