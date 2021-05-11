@@ -9,8 +9,15 @@ class ScorePredictor(nn.Module):
         with edge_subgraph.local_scope():
             edge_subgraph.ndata['x'] = x
             for etype in edge_subgraph.canonical_etypes:
-                edge_subgraph.apply_edges(
-                    dgl.function.u_dot_v('x', 'x', 'score'), etype=etype)
+                if edge_subgraph.num_edges(etype) == 0:
+                    # print(edge_subgraph)
+                    continue
+                    # edge_subgraph.apply_edges(
+                    #     None, etype=etype
+                    # )
+                else:
+                    edge_subgraph.apply_edges(
+                        dgl.function.u_dot_v('x', 'x', 'score'), etype=etype)
             return edge_subgraph.edata['score']
 
 

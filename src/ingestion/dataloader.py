@@ -400,14 +400,13 @@ class SCDataLoader(object):
         # sampler = (
         #     dgl.dataloading.MultiLayerNeighborSampler([60, 60])
         # )
-
         sampler = dgl.dataloading.MultiLayerFullNeighborSampler(2)
         negative_sampler = dgl.dataloading.negative_sampler.Uniform(10)
 
         test_data_loader = dgl.dataloading.EdgeDataLoader(
             self.testing_data, graph_eid_dict, sampler,
             negative_sampler=negative_sampler,
-            batch_size=self.params.modelling.batch_size,
+            batch_size=self.params.testing.batch_size,
             shuffle=True,
             drop_last=False,
             # pin_memory=True,
