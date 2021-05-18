@@ -30,10 +30,15 @@ class SupplyKnowledgeGraphDataset(DGLDataset):
     def __init__(self, path: str = 'data/02_intermediate/'):
         with open(path + 'G.pickle', 'rb') as f:
             self.G = pickle.load(f)
-        with open(path + 'bG.pickle', 'rb') as f:
-            self.bG = pickle.load(f)
+        # bG is now being created from supplier_product_ds
+        # with open(path + 'bG.pickle', 'rb') as f:
+        #     self.bG = pickle.load(f)
+
         with open(path + 'cG.pickle', 'rb') as f:
             self.cG = pickle.load(f)
+
+        self.supplier_product_ds = \
+            pd.read_parquet('data/01_raw/supplier_product_df.parquet')
 
         self.company_nodes = None
         self.process_nodes = None
@@ -43,6 +48,7 @@ class SupplyKnowledgeGraphDataset(DGLDataset):
         self.train_graph = None
         self.valid_graph = None
 
+        self.bG = nx.DiGraph()
         self.company_capability_graph = nx.DiGraph()
         self.capability_product_graph = nx.DiGraph()
 
@@ -90,7 +96,7 @@ class SupplyKnowledgeGraphDataset(DGLDataset):
 
         capability_set = set([el.title() for el in capability_list])
 
-        process_list = list(process_nodes_set - capability_set)
+        # process_list = list(process_nodes_set - capability_set)
 
         capabilities_found = \
             list(process_nodes_set.intersection(capability_set))
@@ -123,16 +129,80 @@ class SupplyKnowledgeGraphDataset(DGLDataset):
                 self.company_capability_graph.add_edge(u_of_edge=p1,
                                                        v_of_edge=p2)
 
-    def clean_existing_graphs(self) -> None:
+    def clean_and_generate_graphs(self) -> None:
         """
         Function looks at the newly created (clean) graphs to clean
             G, bG, and cG before converting into a DGL dataset.
         """
         self.generate_new_graphs()
 
+        ########################################################################
+        # Fix bG overlap issue (companies -> products)
+        ########################################################################
+        self.supplier_product_ds = \
+            self.supplier_product_ds.apply(lambda x: x.str.title())
+
+        suppliers_bg = set(self.supplier_product_ds['companyName'].values)
+        products_bg = set(self.supplier_product_ds['product'].values)
+        capabilities = list(
+            set([el[1] for el in self.company_capability_graph.edges]) |
+            set([el[0] for el in self.capability_product_graph.edges])
+        )
+        companies = list(
+            set([el[1].title() for el in self.G.edges]) |
+            set([el[0].title() for el in self.G.edges])
+        )
+
+        products_in_source = list(suppliers_bg.intersection(products_bg))
+        # Remove the products that are in the companies column
+        self.supplier_product_ds = (
+            self.supplier_product_ds
+                .loc[~self.supplier_product_ds['companyName']
+                .isin(products_in_source)]
+        )
+        # self.supplier_product_ds.shape Out[63]: (205400, 2)
+        # Now remove any rows that contain a capability - captured elsewhere
+        cond = (
+            self.supplier_product_ds['companyName'].isin(capabilities)
+            | self.supplier_product_ds['product'].isin(capabilities)
+        )
+        indices_drop = self.supplier_product_ds[cond].index
+
+        # Delete these row indexes from dataframe
+        self.supplier_product_ds = \
+            self.supplier_product_ds.drop(indices_drop, inplace=False)
+
+        # self.supplier_product_ds.shape
+        # Out[15]: (120719, 2)
+
+        self.bG.add_edges_from(self.supplier_product_ds.values)
+
+        ########################################################################
+        # Fix cG by getting rid of all product -> products as capabilities
+        ########################################################################
+        for edges in self.cG.edges:
+            u = edges[0].title()
+            v = edges[1].title()
+            if (u in capabilities) or (v in capabilities)\
+                    or (u in companies) or (v in companies):
+                self.cG.remove_edge(edges[0], edges[1])
+
+        # len(self.cG.edges)
+        # Out[4]: 329739
+
+        # Finally - convert all edges in cG and G to title()
+        edges_cg = self.cG.edges
+        self.cG = nx.DiGraph()
+        self.cG.add_edges_from([(u.title(), v.title()) for u, v in edges_cg])
+
+        edges_g = self.G.edges
+        self.G = nx.DiGraph()
+        self.G.add_edges_from([(u.title(), v.title()) for u, v in edges_g])
+
 
 
     def create_nodes_data(self) -> None:
+        self.clean_and_generate_graphs()
         # Add the company nodes
         self.company_nodes = pd.DataFrame({'NODE_NAME': self.G.nodes,
                                            'NODE_TYPE': 'COMPANY'})

@@ -260,7 +260,7 @@ class VisualiseGraph(object):
         # Intersected products that should never have been there
         intersection_products = products.intersection(companies)
         del companies, products
-
+        # Converted to parquet before the below line - engine=pyarrow, gzip
         supplier_product_df_fixed = (
             self.graph_object.supplierProductdf
                 .loc[~self.graph_object.supplierProductdf['companyName']
