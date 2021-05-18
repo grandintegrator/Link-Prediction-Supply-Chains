@@ -1,33 +1,36 @@
 data:
   path: "/Users/tim-bhp/PycharmProjects/link_predictions_supply_chains/Link-Prediction-Supply-Chains/data/02_intermediate"
 
+device: 'cpu' # change to 'cuda' for GPU
+stream_wandb: True
+
 modelling:
   num_node_features: 15
-  num_hidden_graph_layers: 64
+  num_hidden_graph_layers: 16
   num_negative_samples: 3
   num_classes: 2
   batch_size: 64 # Mini batch size for the graph
-  num_epochs: 50
+  num_epochs: 8000
   evaluate_every: 3 # How many epochs should pass before an evaluation run?
-  test_p: 0.1
+  test_p: 0.3
   num_workers: 0
   loss: "binary_cross_entropy" # Or could also be 'margin'
   log_freq: 20
 
 # Graph Neural Network training parameters (not mutually exclusive with above)
 net:
-  lr: 1e-4
+  lr: 1e-3
   optimiser: "Adam"
   l2_regularisation: 5e-4 # Regularisation term for the GNN weights
   loss: "binary_cross_entropy" # Or could also be 'margin'
 #  inference_edge: ('company', 'buys_from', 'company')
 
 testing:
-  batch_size: 512
+  batch_size: 2048
   log_freq: 10
 
 embedding_net:
   lr: 1e-4
   optimiser: "Adam"
   l2_regularisation: 5e-4
-  loss: 'cross_entropy'
+  loss: 'margin'

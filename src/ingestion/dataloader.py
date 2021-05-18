@@ -2,17 +2,15 @@ import networkx as nx
 import logging
 import dgl
 import pickle
-
-from dgl.data import DGLDataset
-from ingestion.utils import (
-    get_adj_and_degrees,
-    sample_edge_neighborhood
-)
-
 import torch
 import pandas as pd
+import numpy as np
 import warnings
-from typing import List
+
+
+from dgl.data import DGLDataset
+
+from typing import List, Dict, Any
 
 # :)
 warnings.filterwarnings("ignore")
@@ -21,6 +19,11 @@ warnings.filterwarnings("ignore")
 logger = logging.getLogger(__name__)
 logging.getLogger().setLevel(logging.INFO)
 logging.basicConfig()
+
+# Pandas debugging options
+pd.set_option('display.max_rows', 500)
+pd.set_option('display.max_columns', 500)
+pd.set_option('display.width', 1000)
 
 
 class SupplyKnowledgeGraphDataset(DGLDataset):
@@ -40,8 +43,94 @@ class SupplyKnowledgeGraphDataset(DGLDataset):
         self.train_graph = None
         self.valid_graph = None
 
-        logger.info('All graphs loaded to memory')
+        self.company_capability_graph = nx.DiGraph()
+        self.capability_product_graph = nx.DiGraph()
+
+        logger.info('Marklines graphs loaded to memory - moving to process...')
         super().__init__(name='supply_knowledge_graph')
+
+    def generate_new_graphs(self) -> None:
+        """
+        Returns:
+            capabilities - a list containing all of the identified capabilities
+        """
+
+        ########################################################################
+        # Find capability nodes from cG (product-product) edges and bG edge
+        ########################################################################
+        process_nodes_names_subjects = set(([el[0] for el in self.cG.edges]))
+        process_nodes_names_objects = set(([el[1] for el in self.cG.edges]))
+        process_nodes_names_subjects_bg = set(([el[0] for el in self.bG.edges]))
+
+        # Add all of the process - related nodes and remove capabilities
+        process_nodes_set = list(
+            process_nodes_names_subjects | process_nodes_names_objects
+            | process_nodes_names_subjects_bg
+        )
+        # Convert to Title case
+        process_nodes_set = set([el.title() for el in process_nodes_set])
+
+        capability_list = ["Stamping", "Assembly", "Machining",
+                           "Plastic injection molding", "Welding",
+                           "Cold forging", "Plastic molding", "Heat treatment",
+                           "Iron casting", "Casting", "Hot forging",
+                           "Aluminum casting", "Aluminum die casting",
+                           "Plating", "Foaming", "Paint Coating",
+                           "Aluminum machining", "Die casting",
+                           "Various surface treatment", "Blow molding",
+                           "Rubber injection molding parts",
+                           "Electronics/Electric Parts", "Rubber parts",
+                           "Rubber-metal parts", "Rubber extruded parts",
+                           "Interior trim parts", "Exterior parts",
+                           "Forging", "Interior Trim Parts",
+                           "Plastic extruded parts", "Roll forming",
+                           "General Commodity", "Fine blanking",
+                           "Surface treatment/Heat treatment",
+                           "Various Processes", "Hydroforming"]
+
+        capability_set = set([el.title() for el in capability_list])
+
+        process_list = list(process_nodes_set - capability_set)
+
+        capabilities_found = \
+            list(process_nodes_set.intersection(capability_set))
+
+        ########################################################################
+        # Capability graph - (Capability -> Product)
+        ########################################################################
+        for edge in self.cG.edges:
+            p1 = edge[0].title()
+            p2 = edge[1].title()
+
+            if (p1 in capabilities_found) and (p2 not in capabilities_found):
+                self.capability_product_graph.add_edge(u_of_edge=p1,
+                                                       v_of_edge=p2)
+            elif (p2 in capabilities_found) and (p1 not in capabilities_found):
+                self.capability_product_graph.add_edge(u_of_edge=p2,
+                                                       v_of_edge=p1)
+
+        ########################################################################
+        # Company-Capability graph - (Company -> Capability)
+        ########################################################################
+        for edge in self.bG.edges:
+            p1 = edge[0].title()
+            p2 = edge[1].title()
+
+            if p1 in capabilities_found:
+                self.company_capability_graph.add_edge(u_of_edge=p2,
+                                                       v_of_edge=p1)
+            elif p2 in capabilities_found:
+                self.company_capability_graph.add_edge(u_of_edge=p1,
+                                                       v_of_edge=p2)
+
+    def clean_existing_graphs(self) -> None:
+        """
+        Function looks at the newly created (clean) graphs to clean
+            G, bG, and cG before converting into a DGL dataset.
+        """
+        self.generate_new_graphs()
+
+
 
     def create_nodes_data(self) -> None:
         # Add the company nodes
@@ -232,7 +321,12 @@ class SupplyKnowledgeGraphDataset(DGLDataset):
     #     train_triplets = [triplets[i] for i in train_indices]
     #     return train_triplets, test_triplets
 
-    def process(self):
+    def process(self) -> None:
+        """
+
+        Returns:
+            Appends
+        """
         self.create_triples()
         logger.info('Triplets created. Starting processing to pytorch...')
         ########################################################################
@@ -290,6 +384,10 @@ class SupplyKnowledgeGraphDataset(DGLDataset):
 
     def __len__(self):
         return 1
+
+
+loader = SupplyKnowledgeGraphDataset()
+data_frame = loader[0]
 
 
 class SCDataLoader(object):

@@ -20,6 +20,7 @@ class Evaluator(object):
     def log_test_results(auc_batch, pr_batch, step, log_freq) -> None:
         """Logs testing results to w&b
         """
+        wandb.init()
         if (step + 1) % log_freq == 0:
             wandb.log({"epoch": step, "Test AUC (Batch)": auc_batch}, step=step)
             wandb.log({"epoch": step, "Test AUC-PR (Batch)": pr_batch},
@@ -59,11 +60,17 @@ class Evaluator(object):
                         pos_score = pos_score[self.edge_inference]
                         neg_score = neg_score[self.edge_inference]
 
-                        scores_batch = cat([pos_score, neg_score]).detach().numpy()
-                        labels_batch = \
-                            cat([ones(pos_score.shape[0]), zeros(neg_score.shape[0])])
+                        scores_batch = (
+                            cat([pos_score, neg_score]).detach().numpy()
+                        ).squeeze()
+                        labels_batch = (
+                            cat([ones(pos_score.shape[0]),
+                                 zeros(neg_score.shape[0])]).detach().numpy()
+                        )
+
                         auc_batch = roc_auc_score(labels_batch, scores_batch)
-                        pr_batch = average_precision_score(labels_batch, scores_batch)
+                        pr_batch = \
+                            average_precision_score(labels_batch, scores_batch)
 
                         # Add all batch scores/labels/metrics into a large test vector
                         scores_all.extend([scores_batch])
