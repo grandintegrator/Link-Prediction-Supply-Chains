@@ -6,7 +6,7 @@ import torch
 import pandas as pd
 import numpy as np
 import warnings
-from dataset import KnowledgeGraphGenerator
+from ingestion.dataset import KnowledgeGraphGenerator
 from dgl.data import DGLDataset
 from typing import List, Dict, Any
 
@@ -25,7 +25,7 @@ pd.set_option('display.width', 1000)
 
 
 class SupplyKnowledgeGraphDataset(DGLDataset):
-    def __init__(self, path: str = 'data/02_intermediate/',
+    def __init__(self, path: str = '../data/02_intermediate/',
                  from_scratch: bool = True):
         """Class creates a DGLDataset object for a multi-graph to be later
         used with DGL for Link prediction/classification.
@@ -319,7 +319,7 @@ class SupplyKnowledgeGraphDataset(DGLDataset):
                           dtype=torch.int32) for src_id, dst_id
              in zip(company_capability.src_id, company_capability.dst_id)]
 
-        del makes_product, product_product, buys_from, cond, self.triplets
+        del makes_product, product_product, buys_from, cond
         data_dict = {
             ('company', 'buys_from', 'company'): company_buying_triples,
             ('company', 'makes_product', 'product'): makes_product_triples,
@@ -338,8 +338,8 @@ class SupplyKnowledgeGraphDataset(DGLDataset):
         return 1
 
 
-loader = SupplyKnowledgeGraphDataset()
-data_frame = loader[0]
+# loader = SupplyKnowledgeGraphDataset()
+# data_frame = loader[0]
 
 
 class SCDataLoader(object):

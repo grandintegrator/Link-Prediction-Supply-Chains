@@ -74,8 +74,6 @@ class KnowledgeGraphGenerator(object):
              "Surface treatment/Heat treatment",
              "Various Processes", "Hydroforming"]
 
-        self.capabilities_all = [el.title() for el in self.capabilities_all]
-
     def create_bg_clean(self):
         logger.info('Creating bG_clean graph and saving all capabilities.')
         ########################################################################
@@ -159,7 +157,7 @@ class KnowledgeGraphGenerator(object):
                                                        v_of_edge=p1)
 
         ########################################################################
-        # Create Company-Capability graph - (Company -> Capability)
+        # Crease Company-Capability graph - (Company -> Capability)
         ########################################################################
         for edge in tqdm.tqdm(self.bG.edges):
             p1 = edge[0].title()
@@ -222,40 +220,6 @@ class KnowledgeGraphGenerator(object):
         )
         cg_edge_df = cg_edge_df.loc[~cond]
         self.cG_clean.add_edges_from([(u, v) for u, v in cg_edge_df.values])
-
-        ########################################################################
-        # Clean Company-Capability graph - (Company -> Capability)
-        # 83793 ---> 50676
-        ########################################################################
-        company_capability_edge_df = (
-            nx.to_pandas_edgelist(self.company_capability_graph)
-        )
-        cond_drop = (
-            company_capability_edge_df['source'].isin(self.processes_all)
-            | company_capability_edge_df['source'].isin(self.capabilities_all)
-            | company_capability_edge_df['target'].isin(self.companies_all)
-            | company_capability_edge_df['target'].isin(self.processes_all)
-        )
-        company_capability_edge_df = company_capability_edge_df.loc[~cond_drop]
-        self.company_capability_graph = nx.DiGraph()
-        self.company_capability_graph.add_edges_from([(u, v) for u, v in company_capability_edge_df.values])
-
-        ########################################################################
-        # CLEAN Capability graph - (Capability -> Product)
-        # 51348 --> 16326
-        ########################################################################
-        capability_product_graph_edge_df = (
-            nx.to_pandas_edgelist(self.capability_product_graph)
-        )
-        cond_drop = (
-            capability_product_graph_edge_df['source'].isin(self.processes_all)
-            | capability_product_graph_edge_df['source'].isin(self.companies_all)
-            | capability_product_graph_edge_df['target'].isin(self.companies_all)
-            | capability_product_graph_edge_df['target'].isin(self.capabilities_all)
-        )
-        capability_product_graph_edge_df = capability_product_graph_edge_df.loc[~cond_drop]
-        self.capability_product_graph = nx.DiGraph()
-        self.capability_product_graph.add_edges_from([(u, v) for u, v in capability_product_graph_edge_df.values])
 
     def save(self, path: str = '../data/02_intermediate/') -> object:
         """
