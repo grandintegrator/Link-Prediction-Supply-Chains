@@ -6,6 +6,7 @@ from torch import cat, ones, zeros
 from sklearn.metrics import roc_auc_score
 from sklearn.metrics import average_precision_score
 from typing import List
+from model.dgl.StochasticRGCN import ScorePredictor
 
 
 class Trainer(object):
@@ -14,6 +15,7 @@ class Trainer(object):
         self.model = model
         self.train_data_loader = train_data_loader
         self.edge_inference = ('company', 'buys_from', 'company')
+        self.predictor = ScorePredictor().to(params.device)
 
         # Fixing parameter types because Box doesn't do this naturally.
         self.params.net.lr = float(self.params.net.lr)
@@ -99,7 +101,7 @@ class Trainer(object):
                 loss.backward()
                 self.opt.step()
 
-                # Logging
+                # # Logging
                 if (step + 1) % self.params.modelling.log_freq == 0:
                     # Compute some training set statistics
                     auc, auc_pr = self.compute_train_auc_ap(pos_score,
