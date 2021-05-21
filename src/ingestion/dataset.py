@@ -4,6 +4,7 @@ import tqdm
 import pandas as pd
 import logging
 from copy import copy
+from networkx.algorithms import bipartite
 
 # Logger preferences
 logging.getLogger().setLevel(logging.INFO)
@@ -50,7 +51,7 @@ class KnowledgeGraphGenerator(object):
         self.cG_clean = nx.DiGraph()
         self.company_capability_graph = nx.DiGraph()
         self.capability_product_graph = nx.DiGraph()
-        self.capability_graph = nx.DiGraph()  # TODO
+        self.capability_graph = nx.DiGraph()
 
         self.processes_all = None
         self.companies_all = None
@@ -257,12 +258,79 @@ class KnowledgeGraphGenerator(object):
         self.capability_product_graph = nx.DiGraph()
         self.capability_product_graph.add_edges_from([(u, v) for u, v in capability_product_graph_edge_df.values])
 
+    def analyse_bipartite(self):
+        """Function analyses bipartite graphs
+                Product -> Product (weights)
+                Capability -> Capability (weights)
+
+        """
+        import plotly.express as px
+        from collections import Counter
+        import plotly.io as pio
+        import plotly.figure_factory as ff
+        # Plotting preferences
+        pio.templates.default = "plotly_white"
+
+        # cG bipartite projection analysis.
+        edge_df_cg = nx.to_pandas_edgelist(self.cG)
+        edge_df_cg = edge_df_cg.sample(n=30000).reset_index(drop=True)
+        fig = ff.create_distplot([edge_df_cg['weight']],
+                                 group_labels=['cG Projection Weights'])
+        fig.update_layout(font_family='Arial',
+                          title='Bipartite Projection (bG) Weight Distribution',
+                          yaxis_title=r"P(w)",
+                          xaxis_title=r"w - Weight",
+                          # legend_title='Legend',
+                          font=dict(size=24))
+        fig.write_html('../data/04_results/' + 'cG_weight_distribution.html')
+
+        counts = dict(Counter(edge_df_cg['weight']))
+        loglog_df = \
+            pd.DataFrame.from_dict(counts, orient='index').reset_index()
+        loglog_df = loglog_df.rename(columns={'index': 'WEIGHT_COUNT',
+                                              0: 'FRACTION_OF_WEIGHTS'})
+
+        number_of_edges = edge_df_cg.shape[0]
+        loglog_df['FRACTION_OF_WEIGHTS'] = (
+                loglog_df['FRACTION_OF_WEIGHTS'] / number_of_edges
+        )
+        fig = px.scatter(data_frame=loglog_df,
+                         x='WEIGHT_COUNT',
+                         y='FRACTION_OF_WEIGHTS',
+                         log_x=True,
+                         log_y=True)
+        title = 'Log Log of Weight Distribution for (Product -> Product Graph)'
+        fig.update_layout(font_family='Arial',
+                          title=title,
+                          yaxis_title='Fraction of Edges (log)',
+                          xaxis_title='Weight (log)',
+                          font=dict(size=24))
+
+        fig.write_html('../data/04_results/' + 'cG_Weight_log_log.html')
+
+    def create_capability_capability(self):
+        """Creates a bipartite production to find complementary Capabilities
+        """
+        assert nx.is_bipartite(self.company_capability_graph)
+        capabilities = list(
+            set([el[1] for el in self.company_capability_graph.edges])
+            | set([el[0] for el in self.capability_product_graph.edges])
+        )
+        capability_projection = (
+            bipartite.weighted_projected_graph(self.company_capability_graph,
+                                               nodes=capabilities)
+        )
+        # Projection above produces no edges because all weights are 0.
+        self.capability_graph = capability_projection
+
     def save(self, path: str = '../data/02_intermediate/') -> object:
         """
         Creates a new object and saves all graphs into the object.
         """
         # Create all graphs from scratch again
         self.clean_and_generate_graphs()
+        self.create_capability_capability()
+        self.analyse_bipartite()
 
         # Pickle self into path provided
         # source, destination

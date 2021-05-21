@@ -6,9 +6,9 @@ import pandas as pd
 from exploration.visualise_graph import VisualiseGraph
 # from exploration import VisualiseGraph
 #
-# from ingestion.dataloader import SupplyKnowledgeGraphDataset
-# loader = SupplyKnowledgeGraphDataset()
-# pair_frame = loader.triplets
+from ingestion.dataloader import SupplyKnowledgeGraphDataset
+loader = SupplyKnowledgeGraphDataset()
+pair_frame = loader.triplets
 #
 # pair_frame.to_parquet('../data/02_intermediate/triplets.parquet',
 #                       engine='pyarrow', compression='gzip')
