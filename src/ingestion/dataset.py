@@ -78,10 +78,18 @@ class KnowledgeGraphGenerator(object):
         self.capabilities_all = [el.title() for el in self.capabilities_all]
 
     def create_bg_clean(self):
+        """
+        Fix bG overlap issue (companies -> products)
+        Companies -> Products should be bipartite but has products in companies
+        and companies in products.
+        1) Remove the overlap between the two bipartite sides.
+        2) Remove capabilities from the product side.
+
+        Returns
+        -------
+        Cleaned bG - bipartite with all capabilities removed from product side
+        """
         logger.info('Creating bG_clean graph and saving all capabilities.')
-        ########################################################################
-        # Fix bG overlap issue (companies -> products)
-        ########################################################################
         self.supplier_product_ds = \
             self.supplier_product_ds.apply(lambda x: x.str.title())
 
