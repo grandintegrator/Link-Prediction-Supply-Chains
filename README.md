@@ -6,6 +6,7 @@ The file structure is laid out as follows:
 
 Start analysis with `pip install -r requirements.txt`
 
+`
 ├── config              <- Project configurations
 │   ├── config.yml      <- For changing run paramteres (e.g. number of epochs 🌝)
 ├── data
@@ -21,3 +22,4 @@ Start analysis with `pip install -r requirements.txt`
 │   ├── ingestion       <- Transforming the complex network into a Knowledge Graph and build Pytorch dataloaders
 │   ├── managers        <- Training and testing managers for pytorch (`training.py` and `testing.py`)
 │   └── model           <- DGL Models
+`
