@@ -8,7 +8,7 @@ The file structure is laid out as follows:
 
 ```
 |---- config              <- Project configurations
-      |-- config.yml      <- For changing run paramteres (e.g. number of epochs 🌝)
+    |-- config.yml        <- For changing run paramteres (e.g. number of epochs 🌝)
 |
 |---- data
     |-- 01_raw            <- Data from third party sources.
