@@ -5,6 +5,8 @@ import pandas as pd
 import logging
 from copy import copy
 from networkx.algorithms import bipartite
+from collections import Counter
+from itertools import product
 
 # Logger preferences
 logging.getLogger().setLevel(logging.INFO)
@@ -49,6 +51,7 @@ class KnowledgeGraphGenerator(object):
         self.bG_clean = nx.DiGraph()
         self.G_clean = nx.DiGraph()
         self.cG_clean = nx.DiGraph()
+
         self.company_capability_graph = nx.DiGraph()
         self.capability_product_graph = nx.DiGraph()
         self.capability_graph = nx.DiGraph()
@@ -156,16 +159,16 @@ class KnowledgeGraphGenerator(object):
         ########################################################################
         # Create Capability graph - (Capability -> Product)
         ########################################################################
-        for edge in tqdm.tqdm(self.cG.edges):
-            p1 = edge[0].title()
-            p2 = edge[1].title()
-
-            if (p1 in capabilities_found) and (p2 not in capabilities_found):
-                self.capability_product_graph.add_edge(u_of_edge=p1,
-                                                       v_of_edge=p2)
-            elif (p2 in capabilities_found) and (p1 not in capabilities_found):
-                self.capability_product_graph.add_edge(u_of_edge=p2,
-                                                       v_of_edge=p1)
+        # for edge in tqdm.tqdm(self.cG.edges):
+        #     p1 = edge[0].title()
+        #     p2 = edge[1].title()
+        #
+        #     if (p1 in capabilities_found) and (p2 not in capabilities_found):
+        #         self.capability_product_graph.add_edge(u_of_edge=p1,
+        #                                                v_of_edge=p2)
+        #     elif (p2 in capabilities_found) and (p1 not in capabilities_found):
+        #         self.capability_product_graph.add_edge(u_of_edge=p2,
+        #                                                v_of_edge=p1)
 
         ########################################################################
         # Create Company-Capability graph - (Company -> Capability)
@@ -316,6 +319,29 @@ class KnowledgeGraphGenerator(object):
 
         fig.write_html('../data/04_results/' + 'cG_Weight_log_log.html')
 
+    def create_capability_product_graph(self):
+        """
+        Returns:
+            Function takes
+            - sees the company -> {Product, Capability}
+        """
+        logger.info('Creating Capability --> Product Weighted Network')
+        edge_bunch_list = list()
+
+        for company in tqdm.tqdm(self.companies_all):
+            capabilities = \
+                [el[1] for el in self.company_capability_graph.edges(company)]
+            products = [el[1] for el in self.bG_clean.edges(company)]
+            # edge_bunch = tuple(map(lambda x: tuple((x, p) for p in products),
+            #                        capabilities))[0]
+            #
+            edge_bunch_list += list(product(capabilities, products))
+
+        edge_bunch_dict = dict(Counter(edge_bunch_list))
+        for k, v in zip(edge_bunch_dict.keys(), edge_bunch_dict.values()):
+            edge_bunch = [(k[0], k[1], v)]
+            self.capability_product_graph.add_weighted_edges_from(edge_bunch)
+
     def create_capability_capability(self):
         """Creates a bipartite production to find complementary Capabilities
         """
@@ -339,11 +365,11 @@ class KnowledgeGraphGenerator(object):
         self.clean_and_generate_graphs()
         self.create_capability_capability()
         self.analyse_bipartite()
+        self.create_capability_product_graph()
 
         # Pickle self into path provided
         # source, destination
         with open(path + 'dataset.pickle', 'wb') as file_path:
-
             logger.info('Saving graphs with the following dimensions:')
             logger.info('====================================================')
             logger.info(f'cG should have {len(self.cG_clean.edges)} edges')

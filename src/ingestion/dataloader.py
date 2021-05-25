@@ -250,6 +250,23 @@ class SupplyKnowledgeGraphDataset(DGLDataset):
                                    company_product_frame,
                                    company_capability_frame],
                                   ignore_index=True)
+        logger.info('====================================================')
+        logger.info('\n')
+        logging.info('{}'.format(companies_company_frame.head().to_string()))
+        logger.info('====================================================')
+        logger.info('\n')
+        logging.info('{}'.format(product_product_frame.head().to_string()))
+        logger.info('====================================================')
+        logger.info('\n')
+        logging.info('{}'.format(capability_product_frame.head().to_string()))
+        logger.info('====================================================')
+        logger.info('\n')
+        logging.info('{}'.format(company_product_frame.head().to_string()))
+        logger.info('====================================================')
+        logger.info('\n')
+        logging.info('{}'.format(company_capability_frame.head().to_string()))
+        logger.info('====================================================')
+        logger.info('\n')
 
         # self.triplets.shape = (796124, 7)
         del companies_company_frame, product_product_frame,\
@@ -323,8 +340,8 @@ class SupplyKnowledgeGraphDataset(DGLDataset):
         data_dict = {
             ('company', 'buys_from', 'company'): company_buying_triples,
             ('company', 'makes_product', 'product'): makes_product_triples,
-            ('product', 'complimentary_product_to', 'product'): product_product_triples,
-            ('capability', 'capability_produces', 'product'): capability_product_triples,
+            # ('product', 'complimentary_product_to', 'product'): product_product_triples,
+            # ('capability', 'capability_produces', 'product'): capability_product_triples,
             ('company', 'has_capability', 'capability'): company_capability_triples
         }
 
