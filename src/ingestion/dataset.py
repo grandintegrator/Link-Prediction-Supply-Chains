@@ -321,9 +321,7 @@ class KnowledgeGraphGenerator(object):
 
     def create_capability_product_graph(self):
         """
-        Returns:
-            Function takes
-            - sees the company -> {Product, Capability}
+        Creates Capability -> Product Graph
         """
         logger.info('Creating Capability --> Product Weighted Network')
         edge_bunch_list = list()
@@ -339,8 +337,9 @@ class KnowledgeGraphGenerator(object):
 
         edge_bunch_dict = dict(Counter(edge_bunch_list))
         for k, v in zip(edge_bunch_dict.keys(), edge_bunch_dict.values()):
-            edge_bunch = [(k[0], k[1], v)]
-            self.capability_product_graph.add_weighted_edges_from(edge_bunch)
+            # edge_bunch = [(k[0], k[1], v)]
+            self.capability_product_graph.add_edge(k[0], k[1], weight=v)
+
 
     def create_capability_capability(self):
         """Creates a bipartite production to find complementary Capabilities
