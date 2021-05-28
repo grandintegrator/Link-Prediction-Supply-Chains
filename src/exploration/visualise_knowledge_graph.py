@@ -33,8 +33,8 @@ app = dash.Dash(__name__)
 
 companies = ['Jiangsu Yuhua Automobile Parts',
              'Danyang Boliang Lamps Factory',
-             'Bill Forge',
-             'Varta',
+             # 'Bill Forge',
+             # 'Varta',
              'Mitsubishi Motors Europe',
              'Activline',
              'Fehrer',

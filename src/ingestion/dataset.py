@@ -3,10 +3,18 @@ import pickle
 import tqdm
 import pandas as pd
 import logging
+import plotly.express as px
+import plotly.io as pio
+import plotly.figure_factory as ff
+
 from copy import copy
 from networkx.algorithms import bipartite
+from itertools import product, chain
 from collections import Counter
-from itertools import product
+# from utils import cleanCompany
+
+# Plotting preferences
+pio.templates.default = "plotly_white"
 
 # Logger preferences
 logging.getLogger().setLevel(logging.INFO)
@@ -22,14 +30,15 @@ class KnowledgeGraphGenerator(object):
 
         Returns
         -------
-        g (company -> company)
-        bG (company -> product)
-        company_capability_graph (company -> capability)
-        capability_product_graph (capability -> product)
+        G: (company -> buys_from -> company)
+        bG: (company -> makes_product -> product)
+        company_capability_graph: (company -> has_capability -> capability)
+        capability_product_graph: (capability -> makes_product -> product)
+        location based graph: (company -> located_in -> country)
 
         Graphs based on Bipartite projection (TBD):
-        cG (product -> product) ???
-        capability_graph (capability -> capability) ???
+        cG (product -> product) ---- Choosing to remove
+        capability_graph (capability -> capability) ------- TBD..
 
         """
         ########################################################################
@@ -44,6 +53,11 @@ class KnowledgeGraphGenerator(object):
         self.supplier_product_ds = \
             pd.read_parquet('../data/01_raw/supplier_product_df.parquet')
 
+        # self.raw_df = \
+        #     pd.read_pickle('../data/02_intermediate/raw_df_clean_co.pkl')
+        self.raw_df = \
+            pd.read_parquet('../data/02_intermediate/raw_df_truncated.parquet')
+
         ########################################################################
         # Create empty graph objects to store data into
         ########################################################################
@@ -55,6 +69,8 @@ class KnowledgeGraphGenerator(object):
         self.company_capability_graph = nx.DiGraph()
         self.capability_product_graph = nx.DiGraph()
         self.capability_graph = nx.DiGraph()
+        self.company_country_graph = nx.DiGraph()
+        self.company_certification_graph = nx.DiGraph()
 
         self.processes_all = None
         self.companies_all = None
@@ -215,7 +231,9 @@ class KnowledgeGraphGenerator(object):
 
         self.companies_all = list(
             set([el[1].title() for el in self.G_clean.edges]) |
-            set([el[0].title() for el in self.G_clean.edges])
+            set([el[0].title() for el in self.G_clean.edges]) |
+            set([el[0] for el in self.bG_clean.edges])
+            # set([el[0]])
         )
 
         ########################################################################
@@ -265,9 +283,13 @@ class KnowledgeGraphGenerator(object):
             | capability_product_graph_edge_df['target'].isin(self.companies_all)
             | capability_product_graph_edge_df['target'].isin(self.capabilities_all)
         )
-        capability_product_graph_edge_df = capability_product_graph_edge_df.loc[~cond_drop]
+        capability_product_graph_edge_df = (
+            capability_product_graph_edge_df.loc[~cond_drop]
+        )
+        edges_add = capability_product_graph_edge_df.values
         self.capability_product_graph = nx.DiGraph()
-        self.capability_product_graph.add_edges_from([(u, v) for u, v in capability_product_graph_edge_df.values])
+        self.capability_product_graph\
+            .add_edges_from([(u, v) for u, v in edges_add])
 
     def analyse_bipartite(self):
         """Function analyses bipartite graphs
@@ -275,13 +297,6 @@ class KnowledgeGraphGenerator(object):
                 Capability -> Capability (weights)
 
         """
-        import plotly.express as px
-        from collections import Counter
-        import plotly.io as pio
-        import plotly.figure_factory as ff
-        # Plotting preferences
-        pio.templates.default = "plotly_white"
-
         # cG bipartite projection analysis.
         edge_df_cg = nx.to_pandas_edgelist(self.cG)
         edge_df_cg = edge_df_cg.sample(n=30000).reset_index(drop=True)
@@ -340,7 +355,6 @@ class KnowledgeGraphGenerator(object):
             # edge_bunch = [(k[0], k[1], v)]
             self.capability_product_graph.add_edge(k[0], k[1], weight=v)
 
-
     def create_capability_capability(self):
         """Creates a bipartite production to find complementary Capabilities
         """
@@ -356,6 +370,91 @@ class KnowledgeGraphGenerator(object):
         # Projection above produces no edges because all weights are 0.
         self.capability_graph = capability_projection
 
+    def create_company_country_links(self) -> None:
+        """
+
+        This function reads raw_df from self and creates
+        Company -> located_in -> Country
+
+        """
+        # Strip the rubbish from the company names
+        # self.raw_df['COMPANY_NAME'] = (
+        #     self.raw_df['CompanyName']
+        #         .apply(lambda x: x.strip("\t").strip("\r\n"))
+        # )
+        #
+        # #
+        # self.raw_df['COMPANY_NAME_CLEAN_CO'] = \
+        #     self.raw_df['COMPANY_NAME'].apply(lambda x: cleanCompany(x))
+        #
+        # self.raw_df['COMPANY_NAME_CLEAN_CO_LOWER'] = \
+        #     self.raw_df['COMPANY_NAME_CLEAN_CO'].apply(lambda x: x.title())
+        #
+        # self.raw_df['COMPANY_NAME_CLEAN_CO_LOWER'].head(100)
+        # cols_keep = ['Country', 'Continent',
+        #              'Quality', 'Remarks', 'COMPANY_NAME_CLEAN_CO_LOWER']
+        # self.raw_df_truncated = self.raw_df[cols_keep]
+        # data_path = '../data/02_intermediate/raw_df_truncated.parquet'
+        # self.raw_df_truncated.to_parquet(data_path, engine='pyarrow')
+
+        cond_1 = \
+            self.raw_df['COMPANY_NAME_CLEAN_CO_LOWER'].isin(self.companies_all)
+        cond_2 = ~(self.raw_df['Country'].isna())
+        cond = cond_1 & cond_2
+
+        self.raw_df = self.raw_df.loc[cond, :]
+        col_select = ['COMPANY_NAME_CLEAN_CO_LOWER', 'Country']
+        edge_bunch = [(u, v) for u, v in self.raw_df[col_select].values]
+        self.company_country_graph.add_edges_from(edge_bunch)
+
+    def create_company_qualification_graph(self) -> None:
+        """
+
+        This function reads raw_df from self and creates
+        Company -> has_cert -> Certification
+
+        """
+        cols = ['COMPANY_NAME_CLEAN_CO_LOWER', 'Quality']
+        cond_1 = \
+            self.raw_df[cols[0]].isin(self.companies_all)
+        cond_2 = ~(self.raw_df[cols[1]].isna())
+        cond = cond_1 & cond_2
+        self.raw_df = self.raw_df.loc[cond, :]
+        self.raw_df = self.raw_df.reset_index(drop=True)
+
+        def add_qualification(row):
+            company = row[cols[0]]
+            company = str(company)
+            qualifications = row[cols[1]].split(sep=',')
+            return [(company, qual) for qual in qualifications]
+        edge_bunches = list(self.raw_df[cols].apply(add_qualification, axis=1))
+
+        edge_bunch = list(chain(*edge_bunches))
+        self.company_certification_graph.add_edges_from(edge_bunch)
+
+    # def cut_capability_product_graph(self):
+    #     """
+    #     """
+    #     capability_product_graph = \
+    #         nx.to_pandas_edgelist(self.capability_product_graph)
+    #     capability_product_graph = (
+    #         capability_product_graph
+    #         .sort_values(by='weight', ascending=False)
+    #         .reset_index(drop=True)
+    #     )
+    #     import plotly.graph_objects as go
+    #     # fig = ff.create_distplot([capability_product_graph['weight']],
+    #     #                          group_labels=['cG Projection Weights'])
+    #     fig = go.Figure()
+    #     fig.add_trace(go.Bar(capability_product_graph))
+    #     fig.update_layout(font_family='Arial',
+    #                       title='Bipartite Projection (bG) Weight Distribution',
+    #                       yaxis_title=r"P(w)",
+    #                       xaxis_title=r"w - Weight",
+    #                       # legend_title='Legend',
+    #                       font=dict(size=24))
+    #     fig.write_html('../data/04_results/' + 'capability_product_graph.html')
+
     def save(self, path: str = '../data/02_intermediate/') -> object:
         """
         Creates a new object and saves all graphs into the object.
@@ -365,6 +464,9 @@ class KnowledgeGraphGenerator(object):
         self.create_capability_capability()
         self.analyse_bipartite()
         self.create_capability_product_graph()
+        # self.cut_capability_product_graph()
+        self.create_company_country_links()
+        self.create_company_qualification_graph()
 
         # Pickle self into path provided
         # source, destination
