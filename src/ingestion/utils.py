@@ -1,7 +1,35 @@
 import numpy as np
+from cleanco import prepare_terms, basename
+
 """
 Taken from https://github.com/dmlc/dgl/blob/master/examples/pytorch/rgcn/utils.py
 """
+
+
+def stripCompany(business_name, n=2):
+    # clean n times because some companies have multiple legal statuses
+
+    # clean terms
+    terms = prepare_terms()
+    newName = basename(business_name, terms, prefix=True, middle=False, suffix=True)
+
+    if n > 0:
+        return stripCompany(newName, n - 1)
+    else:
+        return newName
+
+
+def clean_company(name):
+    stripName = stripCompany(name)
+    stripName = stripName.upper()
+    return stripName
+
+
+def cleanProduct(text, removeWords):
+    for word in removeWords:
+        text = text.replace(word, "")
+
+    return text
 
 
 def get_adj_and_degrees(num_nodes, triplets):
