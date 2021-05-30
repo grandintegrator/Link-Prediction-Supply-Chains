@@ -9,6 +9,7 @@ import warnings
 from ingestion.dataset import KnowledgeGraphGenerator
 from dgl.data import DGLDataset
 from typing import List, Dict, Any
+from pprint import pformat
 
 # :)
 warnings.filterwarnings("ignore")
@@ -26,7 +27,8 @@ pd.set_option('display.width', 1000)
 
 class SupplyKnowledgeGraphDataset(DGLDataset):
     def __init__(self, path: str = '../data/02_intermediate/',
-                 from_scratch: bool = True):
+                 from_scratch: bool = True,
+                 triplets_from_scratch: bool = True):
         """Class creates a DGLDataset object for a multi-graph to be later
         used with DGL for Link prediction/classification.
         """
@@ -34,6 +36,7 @@ class SupplyKnowledgeGraphDataset(DGLDataset):
         # Load dataset from dataset.py
         # Spits an object with all sanitised data (with nice lower names, etc.)
         ########################################################################
+        self.triplets_from_scratch = triplets_from_scratch
         dataset_generator = KnowledgeGraphGenerator()
         dataset = dataset_generator.load(from_scratch=from_scratch,
                                          path=path)
@@ -112,8 +115,8 @@ class SupplyKnowledgeGraphDataset(DGLDataset):
         self.country_nodes = \
             pd.DataFrame({'NODE_NAME': self.countries_all,
                           'NODE_TYPE': 'COUNTRY'})
-        self.capability_nodes['NODE_ID'] = \
-            self.capability_nodes.index.astype('int')
+        self.country_nodes['NODE_ID'] = \
+            self.country_nodes.index.astype('int')
 
         # Same process for all Certification Nodes
         self.certification_nodes = \
@@ -148,18 +151,13 @@ class SupplyKnowledgeGraphDataset(DGLDataset):
                                      ], ignore_index=True)
 
         all_nodes_frame.reset_index(drop=True, inplace=True)
-        # all_nodes_frame['NODE_ID'] = all_nodes_frame.index.astype('int')
-
-        # node_lookup_map = (
-        #     all_nodes_frame[['NODE_NAME',
-        #                      'NODE_ID']].set_index('NODE_NAME')
-        #         .to_dict()['NODE_ID']
-        # )
-        #
-        # d2 = {k: int(v) for k, v in node_lookup_map.items()}
 
         node_lookup_table = \
             all_nodes_frame[['NODE_NAME', 'NODE_ID']].set_index('NODE_NAME')
+        node_lookup_table = node_lookup_table.reset_index()
+
+        node_lookup_table['NODE_ID'] = \
+            node_lookup_table['NODE_ID'].astype('int')
 
         del all_nodes_frame
 
@@ -179,7 +177,7 @@ class SupplyKnowledgeGraphDataset(DGLDataset):
             Returns:
                 Dataframe -
 
-              src| src_id| | dst| dst_id | relation_type | src_type | dst_type
+              src | src_id| | dst| dst_id | relation_type | src_type | dst_type
             """
             sources_targets_nx = nx.to_pandas_edgelist(original_graph)
 
@@ -191,19 +189,15 @@ class SupplyKnowledgeGraphDataset(DGLDataset):
             empty_data_frame['src'] = sources_targets_nx['source']
             empty_data_frame['dst'] = sources_targets_nx['target']
 
-            empty_data_frame['src_id'] = (
-                node_lookup_table.loc[empty_data_frame['src'], 'NODE_ID']
-                    .reset_index(drop=True)
-            )
-            empty_data_frame['dst_id'] = (
-                node_lookup_table.loc[empty_data_frame['dst'], 'NODE_ID']
-                    .reset_index(drop=True)
-            )
-            # Convert all types into integers
-            empty_data_frame['src_id'] = \
-                empty_data_frame['src_id'].astype('int')
-            empty_data_frame['dst_id'] = \
-                empty_data_frame['dst_id'].astype('int')
+            mapper = dict(lookup_table[['NODE_NAME', 'NODE_ID']].values)
+            empty_data_frame['src_id'] = empty_data_frame['src'].map(mapper)
+            empty_data_frame['dst_id'] = empty_data_frame['dst'].map(mapper)
+
+            # Let me know if any of the rows were not found in the mapper.
+            if len(np.where(empty_data_frame.isna())[0]) > 0:
+                raise Exception
+            empty_data_frame = empty_data_frame.dropna()
+
             # Add in final pieces of information regarding relation type and src
             empty_data_frame['relation_type'] = relation_type
             empty_data_frame['src_type'] = src_type
@@ -213,7 +207,7 @@ class SupplyKnowledgeGraphDataset(DGLDataset):
         ########################################################################
         # SUB-FRAME (Company -> buys_from -> Company)
         ########################################################################
-        companies_company_frame = \
+        company_company_frame = \
             sub_frame_generator(self.G,
                                 relation_type='buys_from',
                                 src_type='Company',
@@ -289,7 +283,7 @@ class SupplyKnowledgeGraphDataset(DGLDataset):
         ########################################################################
         # Add everything together into a triplets frame
         ########################################################################
-        self.triplets = pd.concat([companies_company_frame,
+        self.triplets = pd.concat([company_company_frame,
                                    product_product_frame,
                                    capability_product_frame,
                                    company_product_frame,
@@ -297,27 +291,34 @@ class SupplyKnowledgeGraphDataset(DGLDataset):
                                    company_country_frame,
                                    company_certification_frame],
                                   ignore_index=True)
-        logger.info('====================================================')
+        logger.info('=========================================================')
         logger.info('\n')
-        logging.info('{}'.format(companies_company_frame.head().to_string()))
-        logger.info('====================================================')
+        logging.info(pformat(f'{company_company_frame.head().to_string()}'))
+        logger.info('=========================================================')
         logger.info('\n')
-        logging.info('{}'.format(product_product_frame.head().to_string()))
-        logger.info('====================================================')
+        logging.info(pformat(f'{product_product_frame.head().to_string()}'))
+        logger.info('=========================================================')
         logger.info('\n')
-        logging.info('{}'.format(capability_product_frame.head().to_string()))
-        logger.info('====================================================')
+        logging.info(pformat(f'{capability_product_frame.head().to_string()}'))
+        logger.info('=========================================================')
         logger.info('\n')
-        logging.info('{}'.format(company_product_frame.head().to_string()))
-        logger.info('====================================================')
+        logging.info(pformat(f'{company_product_frame.head().to_string()}'))
+        logger.info('=========================================================')
         logger.info('\n')
-        logging.info('{}'.format(company_capability_frame.head().to_string()))
-        logger.info('====================================================')
+        logging.info(pformat(f'{company_capability_frame.head().to_string()}'))
+        logger.info('=========================================================')
         logger.info('\n')
+        logging.info(pformat(f'{company_country_frame.head().to_string()}'))
+        logger.info('\n')
+        logger.info('=========================================================')
+        logging.info(pformat(f'{company_certification_frame.head().to_string()}'))
+        logger.info('====================================================')
+        logger.info(f'The Knowledge Graph has {self.triplets.shape[0]} edges')
 
-        # self.triplets.shape = (796,124, 7)
-        del companies_company_frame, product_product_frame,\
-            capability_product_frame, company_capability_frame
+        # self.triplets.shape  #  = (796,124, 7)
+        del company_company_frame, product_product_frame,\
+            capability_product_frame, company_capability_frame, \
+            company_country_frame, company_certification_frame
 
         self.triplets = (
             self.triplets.reset_index(drop=True)
@@ -334,18 +335,27 @@ class SupplyKnowledgeGraphDataset(DGLDataset):
                                                 'capability_produces': 4,
                                                 'has_capability': 5,
                                                 'located_in': 6,
-                                                'has_cert':7})
+                                                'has_cert': 7})
         )
 
         logger.info('Triplets created for all entities in the KG')
+        self.triplets.to_parquet('../data/02_intermediate/triplets.parquet',
+                                 engine='pyarrow',
+                                 compression='gzip')
+        logger.info('Saved triplets frame...')
         return self.triplets
 
     def process(self) -> None:
         """
         super method -> Gets called first.
         """
-        self.create_triples()
-        logger.info('Triplets created. Starting processing to pytorch...')
+        if self.triplets_from_scratch:
+            self.create_triples()
+            logger.info('Triplets created. Starting processing to pytorch...')
+        else:
+            self.triplets = \
+                pd.read_parquet('../data/02_intermediate/triplets.parquet')
+            logger.info('Triplets loaded from memory, processing to torch...')
 
         ########################################################################
         # Create Heterograph from DGL - This process is done iteratively
@@ -385,12 +395,15 @@ class SupplyKnowledgeGraphDataset(DGLDataset):
                           dtype=torch.int32) for src_id, dst_id
              in zip(company_capability.src_id, company_capability.dst_id)]
 
+
+
+
         del makes_product, product_product, buys_from, cond
         data_dict = {
             ('company', 'buys_from', 'company'): company_buying_triples,
             ('company', 'makes_product', 'product'): makes_product_triples,
             # ('product', 'complimentary_product_to', 'product'): product_product_triples,
-            # ('capability', 'capability_produces', 'product'): capability_product_triples,
+            ('capability', 'capability_produces', 'product'): capability_product_triples,
             ('company', 'has_capability', 'capability'): company_capability_triples
         }
 

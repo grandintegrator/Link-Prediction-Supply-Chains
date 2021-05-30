@@ -236,7 +236,8 @@ class KnowledgeGraphGenerator(object):
         self.companies_all = list(
             set([el[1].title() for el in self.G_clean.edges]) |
             set([el[0].title() for el in self.G_clean.edges]) |
-            set([el[0] for el in self.bG_clean.edges])
+            set([el[0] for el in self.bG_clean.edges]) |
+            set([el[0] for el in self.company_capability_graph.edges])
             # set([el[0]])
         )
 
@@ -272,7 +273,8 @@ class KnowledgeGraphGenerator(object):
         )
         company_capability_edge_df = company_capability_edge_df.loc[~cond_drop]
         self.company_capability_graph = nx.DiGraph()
-        self.company_capability_graph.add_edges_from([(u, v) for u, v in company_capability_edge_df.values])
+        edge_bunch = [(u, v) for u, v in company_capability_edge_df.values]
+        self.company_capability_graph.add_edges_from(edge_bunch)
 
         ########################################################################
         # CLEAN Capability graph - (Capability -> Product)
@@ -494,7 +496,7 @@ class KnowledgeGraphGenerator(object):
         self.create_capability_capability()
         # self.analyse_bipartite()
         self.create_capability_product_graph()
-        self.cut_capability_product_graph()
+        # self.cut_capability_product_graph()
         self.create_company_country_links()
         self.create_company_qualification_graph()
 
