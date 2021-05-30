@@ -1,14 +1,13 @@
 import networkx as nx
 import logging
 import dgl
-import pickle
+import os
 import torch
 import pandas as pd
 import numpy as np
 import warnings
 from ingestion.dataset import KnowledgeGraphGenerator
 from dgl.data import DGLDataset
-from typing import List, Dict, Any
 from pprint import pformat
 
 # :)
@@ -27,8 +26,9 @@ pd.set_option('display.width', 1000)
 
 class SupplyKnowledgeGraphDataset(DGLDataset):
     def __init__(self, path: str = '../data/02_intermediate/',
-                 from_scratch: bool = True,
-                 triplets_from_scratch: bool = True):
+                 from_scratch: bool = False,
+                 triplets_from_scratch: bool = False,
+                 load_graph: bool = True):
         """Class creates a DGLDataset object for a multi-graph to be later
         used with DGL for Link prediction/classification.
         """
@@ -37,6 +37,9 @@ class SupplyKnowledgeGraphDataset(DGLDataset):
         # Spits an object with all sanitised data (with nice lower names, etc.)
         ########################################################################
         self.triplets_from_scratch = triplets_from_scratch
+        self.load_graph = load_graph
+        self.data_path = path
+
         dataset_generator = KnowledgeGraphGenerator()
         dataset = dataset_generator.load(from_scratch=from_scratch,
                                          path=path)
@@ -210,8 +213,8 @@ class SupplyKnowledgeGraphDataset(DGLDataset):
         company_company_frame = \
             sub_frame_generator(self.G,
                                 relation_type='buys_from',
-                                src_type='Company',
-                                dst_type='Company',
+                                src_type='company',
+                                dst_type='company',
                                 lookup_table=node_lookup_table)
 
         ########################################################################
@@ -220,8 +223,8 @@ class SupplyKnowledgeGraphDataset(DGLDataset):
         company_product_frame = (
             sub_frame_generator(self.bG,
                                 relation_type='company_makes',
-                                src_type='Company',
-                                dst_type='Product',
+                                src_type='company',
+                                dst_type='product',
                                 lookup_table=node_lookup_table)
         )
 
@@ -231,8 +234,8 @@ class SupplyKnowledgeGraphDataset(DGLDataset):
         product_product_frame = (
             sub_frame_generator(self.cG,
                                 relation_type='complimentary_product_to',
-                                src_type='Product',
-                                dst_type='Product',
+                                src_type='product',
+                                dst_type='product',
                                 lookup_table=node_lookup_table)
         )
 
@@ -242,8 +245,8 @@ class SupplyKnowledgeGraphDataset(DGLDataset):
         capability_product_frame = (
             sub_frame_generator(self.capability_product_graph,
                                 relation_type='capability_produces',
-                                src_type='Capability',
-                                dst_type='Product',
+                                src_type='capability',
+                                dst_type='product',
                                 lookup_table=node_lookup_table)
         )
 
@@ -253,8 +256,8 @@ class SupplyKnowledgeGraphDataset(DGLDataset):
         company_capability_frame = (
             sub_frame_generator(self.company_capability_graph,
                                 relation_type='has_capability',
-                                src_type='Company',
-                                dst_type='Capability',
+                                src_type='company',
+                                dst_type='capability',
                                 lookup_table=node_lookup_table)
         )
 
@@ -264,8 +267,8 @@ class SupplyKnowledgeGraphDataset(DGLDataset):
         company_country_frame = (
             sub_frame_generator(self.company_country_graph,
                                 relation_type='located_in',
-                                src_type='Company',
-                                dst_type='Country',
+                                src_type='company',
+                                dst_type='country',
                                 lookup_table=node_lookup_table)
         )
 
@@ -275,8 +278,8 @@ class SupplyKnowledgeGraphDataset(DGLDataset):
         company_certification_frame = (
             sub_frame_generator(self.company_certification_graph,
                                 relation_type='has_cert',
-                                src_type='Company',
-                                dst_type='Certification',
+                                src_type='company',
+                                dst_type='certification',
                                 lookup_table=node_lookup_table)
         )
 
@@ -291,27 +294,28 @@ class SupplyKnowledgeGraphDataset(DGLDataset):
                                    company_country_frame,
                                    company_certification_frame],
                                   ignore_index=True)
+
         logger.info('=========================================================')
         logger.info('\n')
-        logging.info(pformat(f'{company_company_frame.head().to_string()}'))
+        logging.info(f'{company_company_frame.head().to_string()}')
         logger.info('=========================================================')
         logger.info('\n')
-        logging.info(pformat(f'{product_product_frame.head().to_string()}'))
+        logging.info(f'{product_product_frame.head().to_string()}')
         logger.info('=========================================================')
         logger.info('\n')
-        logging.info(pformat(f'{capability_product_frame.head().to_string()}'))
+        logging.info(f'{capability_product_frame.head().to_string()}')
         logger.info('=========================================================')
         logger.info('\n')
-        logging.info(pformat(f'{company_product_frame.head().to_string()}'))
+        logging.info(f'{company_product_frame.head().to_string()}')
         logger.info('=========================================================')
         logger.info('\n')
-        logging.info(pformat(f'{company_capability_frame.head().to_string()}'))
+        logging.info(f'{company_capability_frame.head().to_string()}')
         logger.info('=========================================================')
         logger.info('\n')
-        logging.info(pformat(f'{company_country_frame.head().to_string()}'))
+        logging.info(f'{company_country_frame.head().to_string()}')
         logger.info('\n')
         logger.info('=========================================================')
-        logging.info(pformat(f'{company_certification_frame.head().to_string()}'))
+        logging.info(f'{company_certification_frame.head().to_string()}')
         logger.info('====================================================')
         logger.info(f'The Knowledge Graph has {self.triplets.shape[0]} edges')
 
@@ -354,61 +358,94 @@ class SupplyKnowledgeGraphDataset(DGLDataset):
             logger.info('Triplets created. Starting processing to pytorch...')
         else:
             self.triplets = \
-                pd.read_parquet('../data/02_intermediate/triplets.parquet')
+                pd.read_parquet(self.data_path + 'triplets.parquet')
             logger.info('Triplets loaded from memory, processing to torch...')
+            self.load()
 
         ########################################################################
         # Create Heterograph from DGL - This process is done iteratively
         ########################################################################
-        cond = self.triplets['relation_type'] == 'buys_from'
-        buys_from = self.triplets.loc[cond]
-        company_buying_triples = \
-            [torch.tensor((int(src_id), int(dst_id)),
-                          dtype=torch.int32) for src_id, dst_id
-             in zip(buys_from.src_id, buys_from.dst_id)]
+        if self.load_graph:
+            self.load()
+        else:
+            cond = self.triplets['relation_type'] == 'buys_from'
+            buys_from = self.triplets.loc[cond]
+            company_buying_triples = \
+                [torch.tensor((int(src_id), int(dst_id)),
+                              dtype=torch.int32) for src_id, dst_id
+                 in zip(buys_from.src_id, buys_from.dst_id)]
 
-        cond = self.triplets['relation_type'] == 'company_makes'
-        makes_product = self.triplets.loc[cond]
-        makes_product_triples = \
-            [torch.tensor((int(src_id), int(dst_id)),
-                          dtype=torch.int32) for src_id, dst_id
-             in zip(makes_product.src_id, makes_product.dst_id)]
+            cond = self.triplets['relation_type'] == 'company_makes'
+            makes_product = self.triplets.loc[cond]
+            makes_product_triples = \
+                [torch.tensor((int(src_id), int(dst_id)),
+                              dtype=torch.int32) for src_id, dst_id
+                 in zip(makes_product.src_id, makes_product.dst_id)]
 
-        cond = self.triplets['relation_type'] == 'complimentary_product_to'
-        product_product = self.triplets.loc[cond]
-        product_product_triples = \
-            [torch.tensor((int(src_id), int(dst_id)),
-                          dtype=torch.int32) for src_id, dst_id
-             in zip(product_product.src_id, product_product.dst_id)]
+            cond = self.triplets['relation_type'] == 'complimentary_product_to'
+            product_product = self.triplets.loc[cond]
+            product_product_triples = \
+                [torch.tensor((int(src_id), int(dst_id)),
+                              dtype=torch.int32) for src_id, dst_id
+                 in zip(product_product.src_id, product_product.dst_id)]
 
-        cond = self.triplets['relation_type'] == 'capability_produces'
-        capability_product = self.triplets.loc[cond]
-        capability_product_triples = \
-            [torch.tensor((int(src_id), int(dst_id)),
-                          dtype=torch.int32) for src_id, dst_id
-             in zip(capability_product.src_id, capability_product.dst_id)]
+            cond = self.triplets['relation_type'] == 'capability_produces'
+            capability_product = self.triplets.loc[cond]
+            capability_product_triples = \
+                [torch.tensor((int(src_id), int(dst_id)),
+                              dtype=torch.int32) for src_id, dst_id
+                 in zip(capability_product.src_id, capability_product.dst_id)]
 
-        cond = self.triplets['relation_type'] == 'has_capability'
-        company_capability = self.triplets.loc[cond]
-        company_capability_triples = \
-            [torch.tensor((int(src_id), int(dst_id)),
-                          dtype=torch.int32) for src_id, dst_id
-             in zip(company_capability.src_id, company_capability.dst_id)]
+            cond = self.triplets['relation_type'] == 'has_capability'
+            company_capability = self.triplets.loc[cond]
+            company_capability_triples = \
+                [torch.tensor((int(src_id), int(dst_id)),
+                              dtype=torch.int32) for src_id, dst_id
+                 in zip(company_capability.src_id, company_capability.dst_id)]
 
+            cond = self.triplets['relation_type'] == 'located_in'
+            company_location = self.triplets.loc[cond]
+            company_location_triples = \
+                [torch.tensor((int(src_id), int(dst_id)),
+                              dtype=torch.int32) for src_id, dst_id
+                 in zip(company_location.src_id, company_location.dst_id)]
 
+            cond = self.triplets['relation_type'] == 'has_cert'
+            company_cert = self.triplets.loc[cond]
+            company_cert_triples = \
+                [torch.tensor((int(src_id), int(dst_id)),
+                              dtype=torch.int32) for src_id, dst_id
+                 in zip(company_cert.src_id, company_cert.dst_id)]
 
+            del makes_product, product_product, buys_from, cond
+            data_dict = {
+                ('company', 'buys_from', 'company'): company_buying_triples,
+                ('company', 'makes_product', 'product'): makes_product_triples,
+                ('product', 'complimentary_product_to', 'product'): product_product_triples,
+                ('capability', 'capability_produces', 'product'): capability_product_triples,
+                ('company', 'has_capability', 'capability'): company_capability_triples,
+                ('company', 'located_in', 'country'): company_location_triples,
+                ('company', 'has_cert', 'certification'): company_cert_triples
+            }
 
-        del makes_product, product_product, buys_from, cond
-        data_dict = {
-            ('company', 'buys_from', 'company'): company_buying_triples,
-            ('company', 'makes_product', 'product'): makes_product_triples,
-            # ('product', 'complimentary_product_to', 'product'): product_product_triples,
-            ('capability', 'capability_produces', 'product'): capability_product_triples,
-            ('company', 'has_capability', 'capability'): company_capability_triples
-        }
+            self.graph = dgl.heterograph(data_dict)
+            self.num_rels = len(self.graph.etypes)
+            self.save()
 
-        self.graph = dgl.heterograph(data_dict)
-        self.num_rels = len(self.graph.etypes)
+    def save(self):
+        # save graphs and labels
+        graph_path = os.path.join(self.data_path, '_dgl_graph.bin')
+        dgl.save_graphs(graph_path, self.graph)
+        # save other information in python dict
+        info_path = os.path.join(self.data_path, '_info.pkl')
+        dgl.data.utils.save_info(info_path, {'num_rels': self.num_rels})
+
+    def load(self):
+        # load processed data from directory `self.save_path`
+        graph_path = os.path.join(self.data_path, '_dgl_graph.bin')
+        self.graph, label_dict = dgl.data.utils.load_graphs(graph_path)
+        info_path = os.path.join(self.data_path, '_info.pkl')
+        self.num_rels = dgl.data.utils.load_info(info_path)['num_rels']
 
     def __getitem__(self, i):
         return self.graph
