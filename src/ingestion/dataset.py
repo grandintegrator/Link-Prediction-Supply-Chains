@@ -6,6 +6,8 @@ import logging
 import plotly.express as px
 import plotly.io as pio
 import plotly.figure_factory as ff
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 from copy import copy
 from networkx.algorithms import bipartite
@@ -74,6 +76,8 @@ class KnowledgeGraphGenerator(object):
 
         self.processes_all = None
         self.companies_all = None
+        self.countries_all = None
+        self.certifications_all = None
 
         self.capabilities_all = \
             ["Stamping", "Assembly", "Machining",
@@ -232,7 +236,8 @@ class KnowledgeGraphGenerator(object):
         self.companies_all = list(
             set([el[1].title() for el in self.G_clean.edges]) |
             set([el[0].title() for el in self.G_clean.edges]) |
-            set([el[0] for el in self.bG_clean.edges])
+            set([el[0] for el in self.bG_clean.edges]) |
+            set([el[0] for el in self.company_capability_graph.edges])
             # set([el[0]])
         )
 
@@ -255,7 +260,7 @@ class KnowledgeGraphGenerator(object):
 
         ########################################################################
         # Clean Company-Capability graph - (Company -> Capability)
-        # 83793 ---> 50676
+        # 83,793 ---> 50,676
         ########################################################################
         company_capability_edge_df = (
             nx.to_pandas_edgelist(self.company_capability_graph)
@@ -268,7 +273,8 @@ class KnowledgeGraphGenerator(object):
         )
         company_capability_edge_df = company_capability_edge_df.loc[~cond_drop]
         self.company_capability_graph = nx.DiGraph()
-        self.company_capability_graph.add_edges_from([(u, v) for u, v in company_capability_edge_df.values])
+        edge_bunch = [(u, v) for u, v in company_capability_edge_df.values]
+        self.company_capability_graph.add_edges_from(edge_bunch)
 
         ########################################################################
         # CLEAN Capability graph - (Capability -> Product)
@@ -406,6 +412,8 @@ class KnowledgeGraphGenerator(object):
         col_select = ['COMPANY_NAME_CLEAN_CO_LOWER', 'Country']
         edge_bunch = [(u, v) for u, v in self.raw_df[col_select].values]
         self.company_country_graph.add_edges_from(edge_bunch)
+        self.countries_all = \
+            list(set([_el[1] for _el in self.company_country_graph.edges]))
 
     def create_company_qualification_graph(self) -> None:
         """
@@ -431,29 +439,53 @@ class KnowledgeGraphGenerator(object):
 
         edge_bunch = list(chain(*edge_bunches))
         self.company_certification_graph.add_edges_from(edge_bunch)
+        self.certifications_all = \
+            list(set([_el[1] for _el in self.company_certification_graph.edges]))
 
-    # def cut_capability_product_graph(self):
-    #     """
-    #     """
-    #     capability_product_graph = \
-    #         nx.to_pandas_edgelist(self.capability_product_graph)
-    #     capability_product_graph = (
-    #         capability_product_graph
-    #         .sort_values(by='weight', ascending=False)
-    #         .reset_index(drop=True)
-    #     )
-    #     import plotly.graph_objects as go
-    #     # fig = ff.create_distplot([capability_product_graph['weight']],
-    #     #                          group_labels=['cG Projection Weights'])
-    #     fig = go.Figure()
-    #     fig.add_trace(go.Bar(capability_product_graph))
-    #     fig.update_layout(font_family='Arial',
-    #                       title='Bipartite Projection (bG) Weight Distribution',
-    #                       yaxis_title=r"P(w)",
-    #                       xaxis_title=r"w - Weight",
-    #                       # legend_title='Legend',
-    #                       font=dict(size=24))
-    #     fig.write_html('../data/04_results/' + 'capability_product_graph.html')
+    def cut_capability_product_graph(self):
+        """
+        """
+        capability_product_graph = \
+            nx.to_pandas_edgelist(self.capability_product_graph)
+        capability_product_graph = (
+            capability_product_graph
+            .sort_values(by='weight', ascending=False)
+            .reset_index(drop=True)
+        )
+
+        plt.figure(figsize=(6, 3.5))
+        sns.set_context("paper", font_scale=1.8)
+        sns.set_style('ticks')
+        sns.set_style({"xtick.direction": "in", "ytick.direction": "in"})
+        sns.histplot(capability_product_graph['weight'],
+                     kde=False, color=sns.xkcd_rgb['red'],
+                     bins=25, alpha=1, log_scale=True, cumulative=False,
+                     kde_kws={'cumulative': True})
+        sns.histplot(capability_product_graph['weight'],
+                     kde=True, color=sns.xkcd_rgb['red'], element='step',
+                     stat='density', bins=25, alpha=1, log_scale=True,
+                     cumulative=True,
+                     fill=False)
+
+        plt.xlabel('Edge Weight (log)')
+        plt.title('Edge Weights in Capability $\longrightarrow$ Product Projection')
+        plt.tight_layout()
+        plt.gcf().subplots_adjust(left=0.2, right=0.8, top=0.8, bottom=0.2)
+        plt.ylabel('Frequency in Graph')
+        plt.show()
+
+        # import plotly.graph_objects as go
+        # # fig = ff.create_distplot([capability_product_graph['weight']],
+        # #                          group_labels=['cG Projection Weights'])
+        # fig = go.Figure()
+        # fig.add_trace(go.Bar(capability_product_graph))
+        # fig.update_layout(font_family='Arial',
+        #                   title='Bipartite Projection (bG) Weight Distribution',
+        #                   yaxis_title=r"P(w)",
+        #                   xaxis_title=r"w - Weight",
+        #                   # legend_title='Legend',
+        #                   font=dict(size=24))
+        # fig.write_html('../data/04_results/' + 'capability_product_graph.html')
 
     def save(self, path: str = '../data/02_intermediate/') -> object:
         """
@@ -462,7 +494,7 @@ class KnowledgeGraphGenerator(object):
         # Create all graphs from scratch again
         self.clean_and_generate_graphs()
         self.create_capability_capability()
-        self.analyse_bipartite()
+        # self.analyse_bipartite()
         self.create_capability_product_graph()
         # self.cut_capability_product_graph()
         self.create_company_country_links()
