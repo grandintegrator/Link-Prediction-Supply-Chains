@@ -52,13 +52,16 @@ class KnowledgeGraphGenerator(object):
         with open(path + 'cG.pickle', 'rb') as f:
             self.cG = pickle.load(f)
 
-        self.supplier_product_ds = \
-            pd.read_parquet('../data/01_raw/supplier_product_df.parquet')
-
+        if path == '../data/02_intermediate/':
+            self.supplier_product_ds = \
+                pd.read_parquet('../data/01_raw/supplier_product_df.parquet')
+        else:
+            self.supplier_product_ds = \
+                pd.read_parquet('data/01_raw/supplier_product_df.parquet')
         # self.raw_df = \
         #     pd.read_pickle('../data/02_intermediate/raw_df_clean_co.pkl')
         self.raw_df = \
-            pd.read_parquet('../data/02_intermediate/raw_df_truncated.parquet')
+            pd.read_parquet(path + 'raw_df_truncated.parquet')
 
         ########################################################################
         # Create empty graph objects to store data into
