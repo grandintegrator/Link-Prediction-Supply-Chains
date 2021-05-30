@@ -411,9 +411,9 @@ class KnowledgeGraphGenerator(object):
         cond_2 = ~(self.raw_df['Country'].isna())
         cond = cond_1 & cond_2
 
-        self.raw_df = self.raw_df.loc[cond, :]
+        raw_df_local = self.raw_df.loc[cond, :]
         col_select = ['COMPANY_NAME_CLEAN_CO_LOWER', 'Country']
-        edge_bunch = [(u, v) for u, v in self.raw_df[col_select].values]
+        edge_bunch = [(u, v) for u, v in raw_df_local[col_select].values]
         self.company_country_graph.add_edges_from(edge_bunch)
         self.countries_all = \
             list(set([_el[1] for _el in self.company_country_graph.edges]))
@@ -430,20 +430,41 @@ class KnowledgeGraphGenerator(object):
             self.raw_df[cols[0]].isin(self.companies_all)
         cond_2 = ~(self.raw_df[cols[1]].isna())
         cond = cond_1 & cond_2
-        self.raw_df = self.raw_df.loc[cond, :]
-        self.raw_df = self.raw_df.reset_index(drop=True)
+        raw_df_local = self.raw_df.loc[cond, :]
+        raw_df_local = raw_df_local.reset_index(drop=True)
 
         def add_qualification(row):
             company = row[cols[0]]
             company = str(company)
             qualifications = row[cols[1]].split(sep=',')
             return [(company, qual) for qual in qualifications]
-        edge_bunches = list(self.raw_df[cols].apply(add_qualification, axis=1))
+        edge_bunches = list(raw_df_local[cols].apply(add_qualification, axis=1))
 
         edge_bunch = list(chain(*edge_bunches))
         self.company_certification_graph.add_edges_from(edge_bunch)
         self.certifications_all = \
             list(set([_el[1] for _el in self.company_certification_graph.edges]))
+
+    def create_owned_by_graph(self):
+        """
+        Function creates company -> owned_by -> person links.
+        """
+        cols_analyse = ['COMPANY_NAME_CLEAN_CO_LOWER', 'Remarks']
+        cond = ~self.raw_df['Remarks'].isna()
+        raw_df_local = \
+            self.raw_df.loc[cond, cols_analyse].reset_index(drop=True)
+
+        strip_terms = ['-shareholder', '-shareholders', ':', '-',
+                       '-shareholdre', 'shareholdre', 'shareholder']
+
+        def strip_finder(row):
+            # test_str = raw_df_local['Remarks'][0]
+            test_str = row['Remarks'].lower()
+            for sub in strip_terms:
+                test_str = test_str.replace(sub, '')
+            # return ''.join(test_str.split())
+            return test_str
+        raw_df_local.apply(strip_finder, axis=1)
 
     def cut_capability_product_graph(self):
         """

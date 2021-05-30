@@ -26,7 +26,7 @@ pd.set_option('display.width', 1000)
 
 class SupplyKnowledgeGraphDataset(DGLDataset):
     def __init__(self, path: str = '../data/02_intermediate/',
-                 from_scratch: bool = False,
+                 from_scratch: bool = True,
                  triplets_from_scratch: bool = False,
                  load_graph: bool = True):
         """Class creates a DGLDataset object for a multi-graph to be later
