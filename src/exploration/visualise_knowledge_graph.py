@@ -6,9 +6,9 @@ import pandas as pd
 from exploration.visualise_graph import VisualiseGraph
 # from exploration import VisualiseGraph
 #
-from ingestion.dataloader import SupplyKnowledgeGraphDataset
-loader = SupplyKnowledgeGraphDataset()
-pair_frame = loader.triplets
+# from ingestion.dataloader import SupplyKnowledgeGraphDataset
+# loader = SupplyKnowledgeGraphDataset()
+# pair_frame = loader.triplets
 #
 # pair_frame.to_parquet('../data/02_intermediate/triplets.parquet',
 #                       engine='pyarrow', compression='gzip')
@@ -16,7 +16,6 @@ pair_frame = loader.triplets
 pair_frame = pd.read_parquet('../data/02_intermediate/triplets.parquet')
 
 app = dash.Dash(__name__)
-
 
 # graph_class = VisualiseGraph()
 # pair_frame = (
@@ -33,8 +32,8 @@ app = dash.Dash(__name__)
 
 companies = ['Jiangsu Yuhua Automobile Parts',
              'Danyang Boliang Lamps Factory',
-             # 'Bill Forge',
-             # 'Varta',
+             'Bill Forge',
+             'Varta',
              'Mitsubishi Motors Europe',
              'Activline',
              'Fehrer',
@@ -45,14 +44,15 @@ capabilities = ['Machining',
                 'Stamping']
 
 cond = (
-    pair_frame['src'].isin(companies) |
-    pair_frame['src'].isin(capabilities)
+    pair_frame['src'].isin(companies)
+    # pair_frame['src'].isin(capabilities)
     # pair_frame['src'].isin(products)
 )
 pair_frame = pair_frame.loc[cond]
-products = pair_frame.loc[pair_frame['relation_type'] == 'capability_produces']
-pair_frame = pair_frame.loc[~(pair_frame['relation_type'] == 'capability_produces')]
-pair_frame = pd.concat([pair_frame, products.sample(n=20)], axis=0)
+# products = pair_frame.loc[pair_frame['relation_type'] == 'capability_produces']
+# pair_frame = pair_frame.loc[~(pair_frame['relation_type'] == 'capability_produces')]
+pair_frame = pair_frame.sample(n=50)
+# pair_frame = pd.concat([pair_frame, products.sample(n=20)], axis=0)
 # pair_frame = pair_frame.sample(n=100, random_state=1)
 
 ################################################################################
@@ -73,12 +73,16 @@ for node in node_list_unique:
             pair_frame.loc[pair_frame['dst'] == node, 'dst_type'].head(1)
         )[0]
 
-    if node_type == 'Company':
+    if node_type == 'company':
         class_type = 'black'
-    elif node_type == 'Product':
+    elif node_type == 'product':
         class_type = 'blue triangle'
-    elif node_type == 'Capability':
+    elif node_type == 'capability':
         class_type = 'orange square'
+    elif node_type == 'country':
+        class_type = 'yellow diamond'
+    elif node_type == 'certification':
+        class_type = 'black circle'
 
     # class_type = 'blue triangle' if node_type == 'Process' else 'black'
     node_dict_row = {'data': {'id': node},
@@ -127,7 +131,7 @@ app.layout = html.Div([
                 'selector': '.blue',
                 'style': {
                     'background-color': 'blue',
-                    'line-color': 'red'
+                    'line-color': 'black'
                 }
             },
             {
@@ -142,6 +146,22 @@ app.layout = html.Div([
                 'selector': '.triangle',
                 'style': {
                     'shape': 'triangle',
+                    'font-size': '24'
+                }
+            },
+            {
+                'selector': '.diamond',
+                'style': {
+                    'shape': 'diamond',
+                    'background-color': 'yellow',
+                    'font-size': '24'
+                }
+            },
+            {
+                'selector': '.chevron',
+                'style': {
+                    'shape': 'chevron',
+                    'background-color': 'black',
                     'font-size': '24'
                 }
             }
