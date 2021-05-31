@@ -6,11 +6,12 @@ stream_wandb: True
 
 # Config for running data engineering from scratch...
 de:
-  from_scratch: True  # Recreate everything from scratch
+  from_scratch: False  # Recreate everything from scratch
   triplets_from_scratch: False  # Recreate all triplets
   load_graph: True  # Loading the already saved DGL Graph into Memory
   capability_product_weight_cut: 200
   cg_weight_cut: 30
+  graph_save_path: 'data/02_intermediate/'
 
 plotting:
   path: 'data/04_results/'

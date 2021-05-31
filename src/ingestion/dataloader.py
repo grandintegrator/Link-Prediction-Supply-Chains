@@ -12,7 +12,7 @@ class SCDataLoader(object):
                                              from_scratch=False,
                                              triplets_from_scratch=False,
                                              load_graph=True)
-        self.full_graph = loader[0][0]
+        self.full_graph = loader[0]
         self.edge_types = self.full_graph.etypes
         self.training_data = None
         self.testing_data = None
