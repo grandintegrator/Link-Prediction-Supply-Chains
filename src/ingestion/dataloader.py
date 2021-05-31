@@ -1,6 +1,5 @@
 import dgl
 import torch
-
 from ingestion.dgl_dataset import SupplyKnowledgeGraphDataset
 
 
@@ -12,10 +11,16 @@ class SCDataLoader(object):
                                              from_scratch=False,
                                              triplets_from_scratch=False,
                                              load_graph=True)
-        self.full_graph = loader[0]
+        if params.de.load_graph:
+            self.full_graph = loader[0][0]
+        else:
+            self.full_graph = loader[0]
         self.edge_types = self.full_graph.etypes
+
+        # Class initialisations
         self.training_data = None
         self.testing_data = None
+        self.valid_data = None
 
     def get_training_testing(self) -> None:
         """
@@ -23,56 +28,40 @@ class SCDataLoader(object):
         """
         # randomly generate training masks for our buys_from edges
         # Need to make sure this is reproducible.
-        buys_from_train_ids = \
-            torch.zeros(self.full_graph.number_of_edges('buys_from'),
-                        dtype=torch.bool).bernoulli(1-self.params.modelling.test_p)
 
-        # Get all of the edges in the company - buys_from - company edges
-        src, dst = self.full_graph.edges(etype='buys_from')
+        edge_types = self.full_graph.etypes
+        graph_schema = self.full_graph.canonical_etypes
+        train_edge_split_dict = {}
+        valid_edge_split_dict = {}
+        test_edge_split_dict = {}
 
-        # Split them into train and test based on the Bernoulli IDs
-        src_train = src[buys_from_train_ids]
-        dst_train = dst[buys_from_train_ids]
+        for edge_type, edge_tuple in zip(edge_types, graph_schema):
+            src, dst = self.full_graph.edges(etype=edge_type)
+            # Cheeky assertion to ensure that source and destination edges are
+            # maintained.
+            assert len(src) == len(dst)
 
-        src_test = src[~buys_from_train_ids]
-        dst_test = src[~buys_from_train_ids]
+            test_size = int(self.params.modelling.test_p * len(src))
+            valid_size = int(self.params.modelling.valid_p*len(src))
+            train_size = len(src) - valid_size - test_size
 
-        # Create TRAIN and TEST data dictionaries as unique heterographs
-        # edge_type_1 = ('company', 'buys_from', 'company')
-        # edge_type_2 = ('company', 'makes_product', 'product')
-        # edge_type_3 = ('product', 'product_product', 'product')
-        # edge_type_3 = ()
+            # Source and destinations for training
+            src_train = src[0:train_size]
+            dst_train = dst[0:train_size]
+            # Source and destinations for validation
+            src_valid = src[train_size: valid_size + train_size]
+            dst_valid = dst[train_size: valid_size + train_size]
+            # Source and destinations for testing
+            src_test = src[valid_size + train_size:]
+            dst_test = dst[valid_size + train_size:]
 
-        edge_type_1 = ('company', 'buys_from', 'company')
-        edge_type_2 = ('company', 'makes_product', 'product')
-        edge_type_3 = ('product', 'complimentary_product_to', 'product')
-        edge_type_4 = ('capability', 'capability_produces', 'product')
-        edge_type_5 = ('company', 'has_capability', 'capability')
-        edge_type_6 = ('company', 'located_in', 'country')
-        edge_type_7 = ('company', 'has_cert', 'certification')
+            train_edge_split_dict[edge_tuple] = (src_train, dst_train)
+            valid_edge_split_dict[edge_tuple] = (src_valid, dst_valid)
+            test_edge_split_dict[edge_tuple] = (src_test, dst_test)
 
-        train_data_dict = {
-            edge_type_1: (src_train, dst_train),
-            edge_type_2: self.full_graph.edges(etype='makes_product'),
-            edge_type_3: self.full_graph.edges(etype='complimentary_product_to'),
-            edge_type_4: self.full_graph.edges(etype='capability_produces'),
-            edge_type_5: self.full_graph.edges(etype='capability_produces'),
-            edge_type_6: self.full_graph.edges(etype='located_in'),
-            edge_type_7: self.full_graph.edges(etype='has_cert')
-        }
-
-        test_data_dict = {
-            edge_type_1: (src_test, dst_test),
-            edge_type_2: self.full_graph.edges(etype='makes_product'),
-            edge_type_3: self.full_graph.edges(etype='complimentary_product_to'),
-            edge_type_4: self.full_graph.edges(etype='capability_produces'),
-            edge_type_5: self.full_graph.edges(etype='capability_produces'),
-            edge_type_6: self.full_graph.edges(etype='located_in'),
-            edge_type_7: self.full_graph.edges(etype='has_cert')
-        }
-
-        self.training_data = dgl.heterograph(train_data_dict)
-        self.testing_data = dgl.heterograph(test_data_dict)
+        self.training_data = dgl.heterograph(train_edge_split_dict)
+        self.valid_data = dgl.heterograph(valid_edge_split_dict)
+        self.testing_data = dgl.heterograph(test_edge_split_dict)
 
     def get_training_dataloader(self) -> dgl.dataloading.EdgeDataLoader:
         # Create the sampler object

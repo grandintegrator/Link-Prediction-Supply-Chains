@@ -24,7 +24,8 @@ modelling:
   batch_size: 64 # Mini batch size for the graph
   num_epochs: 8000
   evaluate_every: 3 # How many epochs should pass before an evaluation run?
-  test_p: 0.3
+  test_p: 0.1
+  valid_p: 0.2
   num_workers: 0
   loss: "binary_cross_entropy" # Or could also be 'margin'
   log_freq: 20
