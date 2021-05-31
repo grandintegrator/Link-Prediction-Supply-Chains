@@ -7,7 +7,8 @@ from ingestion.dgl_dataset import SupplyKnowledgeGraphDataset
 class SCDataLoader(object):
     def __init__(self, params):
         self.params = params
-        loader = SupplyKnowledgeGraphDataset(path='data/02_intermediate/',
+        loader = SupplyKnowledgeGraphDataset(params=params,
+                                             path='data/02_intermediate/',
                                              from_scratch=False,
                                              triplets_from_scratch=False,
                                              load_graph=True)

@@ -9,6 +9,7 @@ import warnings
 from ingestion.dataset import KnowledgeGraphGenerator
 from dgl.data import DGLDataset
 from pprint import pformat
+from typing import Dict, Any
 
 # :)
 warnings.filterwarnings("ignore")
@@ -25,7 +26,8 @@ pd.set_option('display.width', 1000)
 
 
 class SupplyKnowledgeGraphDataset(DGLDataset):
-    def __init__(self, path: str = '../data/02_intermediate/',
+    def __init__(self, params,
+                 path: str = '../data/02_intermediate/',
                  from_scratch: bool = False,
                  triplets_from_scratch: bool = False,
                  load_graph: bool = True):
@@ -36,14 +38,15 @@ class SupplyKnowledgeGraphDataset(DGLDataset):
         # Load dataset from dataset.py
         # Spits an object with all sanitised data (with nice lower names, etc.)
         ########################################################################
-        self.triplets_from_scratch = triplets_from_scratch
-        self.load_graph = load_graph
+        self.triplets_from_scratch = params.de.triplets_from_scratch
+        self.load_graph = params.de.load_graph
         self.data_path = path
 
-        dataset_generator = KnowledgeGraphGenerator(path=self.data_path)
-        dataset = dataset_generator.load(from_scratch=from_scratch,
+        dataset_generator = KnowledgeGraphGenerator(params=params,
+                                                    path=self.data_path)
+        dataset = dataset_generator.load(from_scratch=params.de.from_scratch,
                                          path=self.data_path)
-        if from_scratch:
+        if params.de.from_scratch:
             logger.info('Loaded graphs with the following dimensions:')
             logger.info('====================================================')
             logger.info(f'cG has {len(dataset.cG_clean.edges)} edges')

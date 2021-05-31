@@ -51,7 +51,7 @@ cond = (
 pair_frame = pair_frame.loc[cond]
 # products = pair_frame.loc[pair_frame['relation_type'] == 'capability_produces']
 # pair_frame = pair_frame.loc[~(pair_frame['relation_type'] == 'capability_produces')]
-pair_frame = pair_frame.sample(n=50)
+pair_frame = pair_frame.sample(n=40)
 # pair_frame = pd.concat([pair_frame, products.sample(n=20)], axis=0)
 # pair_frame = pair_frame.sample(n=100, random_state=1)
 
@@ -82,7 +82,7 @@ for node in node_list_unique:
     elif node_type == 'country':
         class_type = 'yellow diamond'
     elif node_type == 'certification':
-        class_type = 'black circle'
+        class_type = 'black hexagon'
 
     # class_type = 'blue triangle' if node_type == 'Process' else 'black'
     node_dict_row = {'data': {'id': node},
@@ -158,10 +158,10 @@ app.layout = html.Div([
                 }
             },
             {
-                'selector': '.chevron',
+                'selector': '.hexagon',
                 'style': {
-                    'shape': 'chevron',
-                    'background-color': 'black',
+                    'shape': 'hexagon',
+                    'background-color': 'red',
                     'font-size': '24'
                 }
             }
