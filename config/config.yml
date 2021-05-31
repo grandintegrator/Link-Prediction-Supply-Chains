@@ -4,6 +4,17 @@ data:
 device: 'cpu' # change to 'cuda' for GPU
 stream_wandb: True
 
+# Config for running data engineering from scratch...
+de:
+  from_scratch: True  # Recreate everything from scratch
+  triplets_from_scratch: False  # Recreate all triplets
+  load_graph: True  # Loading the already saved DGL Graph into Memory
+  capability_product_weight_cut: 200
+  cg_weight_cut: 30
+
+plotting:
+  path: 'data/04_results/'
+
 modelling:
   num_node_features: 15
   num_hidden_graph_layers: 16

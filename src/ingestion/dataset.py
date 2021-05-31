@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 
 class KnowledgeGraphGenerator(object):
-    def __init__(self, path: str = '../data/02_intermediate/'):
+    def __init__(self, params, path: str = '../data/02_intermediate/'):
         """"
         This class looks at the existing graphs, G, bG, and cG
         couples that information with what we know about capabilities to create
@@ -43,6 +43,7 @@ class KnowledgeGraphGenerator(object):
         capability_graph (capability -> capability) ------- TBD..
 
         """
+        self.params = params
         ########################################################################
         # Load pickled objects from Edward's analysis
         ########################################################################
@@ -102,6 +103,25 @@ class KnowledgeGraphGenerator(object):
              "Various Processes", "Hydroforming"]
 
         self.capabilities_all = [el.title() for el in self.capabilities_all]
+
+    def cut_cg(self):
+        """Function cuts and removes weights from the cG graph that are too high
+        Returns: cG for further analysis but without weights that are too high
+
+        """
+        cut_threshold = self.params.de.cg_weight_cut
+
+        cg_graph = \
+            nx.to_pandas_edgelist(self.cG)
+
+        # Define the condition for cutting
+        cond = cg_graph['weight'] >= cut_threshold
+        cg_graph = cg_graph.loc[cond]
+
+        # Reset the capability_product_graph
+        self.cG = nx.DiGraph()
+        edge_bunch = cg_graph[['source', 'target']].values
+        self.cG.add_edges_from(ebunch_to_add=edge_bunch)
 
     def create_bg_clean(self):
         """
@@ -317,7 +337,7 @@ class KnowledgeGraphGenerator(object):
                           xaxis_title=r"w - Weight",
                           # legend_title='Legend',
                           font=dict(size=24))
-        fig.write_html('../data/04_results/' + 'cG_weight_distribution.html')
+        fig.write_html(self.params.plotting.path + 'cG_weight_distribution.html')
 
         counts = dict(Counter(edge_df_cg['weight']))
         loglog_df = \
@@ -341,7 +361,70 @@ class KnowledgeGraphGenerator(object):
                           xaxis_title='Weight (log)',
                           font=dict(size=24))
 
-        fig.write_html('../data/04_results/' + 'cG_Weight_log_log.html')
+        fig.write_html(self.params.plotting.path + 'cG_Weight_log_log.html')
+
+        from scipy.integrate import cumtrapz
+        import numpy as np
+
+        x = np.linspace(0, 1000, edge_df_cg['weight'].shape[0])
+        cdf = cumtrapz(x=x, y=edge_df_cg['weight'])
+        cdf = (cdf / max(cdf))*100
+
+        data = edge_df_cg['weight'].sort_values(ascending=True)
+        # fig, ax = plt.subplots(ncols=1)
+        plt.figure(figsize=(6, 3.5))
+        sns.set_context("paper", font_scale=1.6)
+        sns.set_style('ticks')
+        sns.set_style({"xtick.direction": "in", "ytick.direction": "in"})
+        ax = sns.histplot(data,
+                     kde=False, color=sns.xkcd_rgb['red'],
+                     bins=15, alpha=1, log_scale=True, cumulative=False,
+                     kde_kws={'cumulative': True})
+        frequencies, _ = np.histogram(data)
+        ax.set_yticks(np.arange(0, max(frequencies)/2, 50e3))
+
+        plt.xlabel('Edge Weight (log)')
+        ax.set_title(r'Edge Weights in Product $\rightarrow$ Product Projection')
+        plt.tight_layout()
+        plt.gcf().subplots_adjust(left=0.2, right=0.8, top=0.8, bottom=0.2)
+        plt.ylabel('Frequency')
+
+        # Second axis for total variation captured
+        ax2 = plt.twinx()
+        ax2.plot(data[1:], cdf)
+        ax2.set_yticks(np.arange(0, 120, 20))
+        ax2.set_ylabel('Proportion CDF (%)')
+        plt.savefig(self.params.plotting.path + 'cG_weights_histogram.png',
+                    bbox_inches='tight')
+        plt.show()
+
+        ########################################################################
+        # Analysing the capability -> product bipartite projection weights
+        ########################################################################
+        capability_product_graph = \
+            nx.to_pandas_edgelist(self.capability_product_graph)
+        capability_product_graph = (
+            capability_product_graph
+            .sort_values(by='weight', ascending=False)
+            .reset_index(drop=True)
+        )
+
+        plt.figure(figsize=(6, 3.5))
+        sns.set_context("paper", font_scale=1.8)
+        sns.set_style('ticks')
+        sns.set_style({"xtick.direction": "in", "ytick.direction": "in"})
+        sns.histplot(capability_product_graph['weight'],
+                     kde=False, color=sns.xkcd_rgb['red'],
+                     bins=25, alpha=1, log_scale=True, cumulative=False,
+                     kde_kws={'cumulative': True})
+        plt.xlabel('Edge Weight (log)')
+        plt.title(r'Edge Weights in Capability $\rightarrow$ Product Projection')
+        plt.tight_layout()
+        plt.gcf().subplots_adjust(left=0.2, right=0.8, top=0.8, bottom=0.2)
+        plt.ylabel('Frequency')
+        plt.savefig(self.params.plotting.path + 'capability_product_weights.png',
+                    bbox_inches='tight')
+        plt.show()
 
     def create_capability_product_graph(self):
         """
@@ -447,59 +530,34 @@ class KnowledgeGraphGenerator(object):
 
     def cut_capability_product_graph(self):
         """
+        Remove edges from the capability -> product graph depending on the
+        cut threshold provided by the parameters.
         """
+        cut_threshold = self.params.de.capability_product_weight_cut
+
         capability_product_graph = \
             nx.to_pandas_edgelist(self.capability_product_graph)
-        capability_product_graph = (
-            capability_product_graph
-            .sort_values(by='weight', ascending=False)
-            .reset_index(drop=True)
-        )
 
-        plt.figure(figsize=(6, 3.5))
-        sns.set_context("paper", font_scale=1.8)
-        sns.set_style('ticks')
-        sns.set_style({"xtick.direction": "in", "ytick.direction": "in"})
-        sns.histplot(capability_product_graph['weight'],
-                     kde=False, color=sns.xkcd_rgb['red'],
-                     bins=25, alpha=1, log_scale=True, cumulative=False,
-                     kde_kws={'cumulative': True})
-        sns.histplot(capability_product_graph['weight'],
-                     kde=True, color=sns.xkcd_rgb['red'], element='step',
-                     stat='density', bins=25, alpha=1, log_scale=True,
-                     cumulative=True,
-                     fill=False)
+        # Define the condition for cutting
+        cond = capability_product_graph['weight'] <= cut_threshold
+        capability_product_graph = capability_product_graph.loc[cond]
 
-        plt.xlabel('Edge Weight (log)')
-        plt.title('Edge Weights in Capability $\longrightarrow$ Product Projection')
-        plt.tight_layout()
-        plt.gcf().subplots_adjust(left=0.2, right=0.8, top=0.8, bottom=0.2)
-        plt.ylabel('Frequency in Graph')
-        plt.show()
-
-        # import plotly.graph_objects as go
-        # # fig = ff.create_distplot([capability_product_graph['weight']],
-        # #                          group_labels=['cG Projection Weights'])
-        # fig = go.Figure()
-        # fig.add_trace(go.Bar(capability_product_graph))
-        # fig.update_layout(font_family='Arial',
-        #                   title='Bipartite Projection (bG) Weight Distribution',
-        #                   yaxis_title=r"P(w)",
-        #                   xaxis_title=r"w - Weight",
-        #                   # legend_title='Legend',
-        #                   font=dict(size=24))
-        # fig.write_html('../data/04_results/' + 'capability_product_graph.html')
+        # Reset the capability_product_graph
+        self.capability_product_graph = nx.DiGraph()
+        edge_bunch = capability_product_graph[['source', 'target']].values
+        self.capability_product_graph.add_edges_from(ebunch_to_add=edge_bunch)
 
     def save(self, path: str = '../data/02_intermediate/') -> object:
         """
         Creates a new object and saves all graphs into the object.
         """
         # Create all graphs from scratch again
+        self.cut_cg()
         self.clean_and_generate_graphs()
         self.create_capability_capability()
-        # self.analyse_bipartite()
         self.create_capability_product_graph()
-        # self.cut_capability_product_graph()
+        # self.analyse_bipartite()
+        self.cut_capability_product_graph()
         self.create_company_country_links()
         self.create_company_qualification_graph()
 
