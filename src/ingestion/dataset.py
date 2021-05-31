@@ -44,6 +44,7 @@ class KnowledgeGraphGenerator(object):
 
         """
         self.params = params
+        self.save_graph_path = self.params.de.graph_save_path
         ########################################################################
         # Load pickled objects from Edward's analysis
         ########################################################################
@@ -271,7 +272,7 @@ class KnowledgeGraphGenerator(object):
         ########################################################################
         cg_edge_df = nx.to_pandas_edgelist(self.cG)
         cg_edge_df = \
-            cg_edge_df.drop(['weight'], axis=1).apply(lambda x: x.str.title())
+            cg_edge_df.apply(lambda x: x.str.title())
         cond = (
             cg_edge_df['source'].isin(self.capabilities_all)
             | cg_edge_df['source'].isin(self.companies_all)
@@ -563,7 +564,7 @@ class KnowledgeGraphGenerator(object):
 
         # Pickle self into path provided
         # source, destination
-        with open(path + 'dataset.pickle', 'wb') as file_path:
+        with open(self.save_graph_path + 'dataset.pickle', 'wb') as file_path:
             logger.info('Saving graphs with the following dimensions:')
             logger.info('====================================================')
             logger.info(f'cG should have {len(self.cG_clean.edges)} edges')
@@ -588,7 +589,8 @@ class KnowledgeGraphGenerator(object):
         if from_scratch:
             return self.save()
         else:
-            with open(path + 'dataset.pickle', 'rb') as file_path:
+            with open(self.save_graph_path + 'dataset.pickle', 'rb') as \
+                    file_path:
                 loaded_object = pickle.load(file_path)
 
             logger.info('Graphs loaded locally with the following dimensions:')
