@@ -2,7 +2,7 @@ data:
   path: "/Users/tim-bhp/PycharmProjects/link_predictions_supply_chains/Link-Prediction-Supply-Chains/data/02_intermediate"
 
 device: 'cpu' # change to 'cuda' for GPU
-stream_wandb: True
+stream_wandb: False
 
 # Config for running data engineering from scratch...
 de:

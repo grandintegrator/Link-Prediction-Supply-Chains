@@ -66,26 +66,20 @@ class SCDataLoader(object):
     def get_training_dataloader(self) -> dgl.dataloading.EdgeDataLoader:
         # Create the sampler object
         self.get_training_testing()
-        n_companies = self.training_data.num_nodes('company')
-        n_products = self.training_data.num_nodes('product')
-        n_hetero_features = self.params.modelling.num_node_features
 
-        # Initialise the training data features
-        self.training_data.nodes['company'].data['feature'] = (
-            torch.randn(n_companies, n_hetero_features)
-        )
+        nodes = ['company', 'product', 'certification', 'country']
+        for node in nodes:
+            n_node_type = self.training_data.num_nodes(node)
+            self.training_data.nodes[node].data['feature'] = (
+                torch.randn(n_node_type,
+                            self.params.modelling.num_node_features)
+            )
 
-        self.training_data.nodes['product'].data['feature'] = (
-            torch.randn(n_products, n_hetero_features)
-        )
         graph_eid_dict = \
             {etype: self.training_data.edges(etype=etype, form='eid')
              for etype in self.training_data.etypes}
 
         sampler = dgl.dataloading.MultiLayerFullNeighborSampler(2)
-        # sampler = (
-        #     dgl.dataloading.MultiLayerNeighborSampler(2)
-        # )
         negative_sampler = dgl.dataloading.negative_sampler.Uniform(10)
 
         train_data_loader = dgl.dataloading.EdgeDataLoader(
@@ -94,7 +88,7 @@ class SCDataLoader(object):
             batch_size=self.params.modelling.batch_size,
             shuffle=True,
             drop_last=False,
-            # pin_memory=True,
+            pin_memory=True,
             num_workers=self.params.modelling.num_workers)
         return train_data_loader
 
