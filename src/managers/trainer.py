@@ -7,7 +7,7 @@ import torch.nn.functional as F
 from torch import cat, ones, zeros
 from sklearn.metrics import roc_auc_score
 from sklearn.metrics import average_precision_score
-from typing import List
+from typing import Dict, Any
 from model.dgl.StochasticRGCN import ScorePredictor
 
 
@@ -65,27 +65,43 @@ class Trainer(object):
                 all_losses.append(binary_cross_entropy)
         return torch.stack(all_losses, dim=0).mean()
 
-    def compute_train_auc_ap(self, pos_score, neg_score) -> List:
+    @staticmethod
+    def compute_train_auc_ap(pos_score, neg_score) -> Dict[str, Any]:
         # TODO: Extend this for multiple edge types - multi-class accuracy
         #   or 1 vs All?
-        pos_score = pos_score[self.edge_inference]
-        neg_score = neg_score[self.edge_inference]
-        scores = (
-            cat([pos_score, neg_score]).detach().numpy()
-        )
-        labels = cat(
-            [ones(pos_score.shape[0]),
-             zeros(neg_score.shape[0])]).detach().numpy()
-        return [roc_auc_score(labels, scores),
-                average_precision_score(labels, scores)]
+        # Compute the AUC per type
+        auc_dict = {}
+        ap_dict = {}
+        for given_edge_type in pos_score.keys():
+            pos_score_edge = pos_score[given_edge_type]
+            neg_score_edge = neg_score[given_edge_type]
+            scores = (
+                cat([pos_score_edge, neg_score_edge]).detach().numpy()
+            )
+            labels = cat(
+                [ones(pos_score_edge.shape[0]),
+                 zeros(neg_score_edge.shape[0])]).detach().numpy()
+            auc_dict['AUC ' + given_edge_type[1]] = \
+                roc_auc_score(labels, scores)
+            ap_dict['AP ' + given_edge_type[1]] = \
+                average_precision_score(labels, scores)
+        return {'AUC_DICT': auc_dict, 'AP_DICT': ap_dict}
 
     @staticmethod
-    def log_results(step, loss, auc, auc_pr, log_freq) -> None:
+    def log_results(step, loss, auc_dict, auc_pr_dict, log_freq) -> None:
         if (step + 1) % log_freq == 0:
+
             wandb.log({"epoch": step, "Training loss": loss}, step=step)
-            wandb.log({"epoch": step, "Training auc": auc}, step=step)
-            wandb.log({"epoch": step, "Training av_precision": auc_pr},
-                      step=step)
+
+            # Logging of AUC values for all edge types in the prediction
+            for auc_edge in auc_dict.keys():
+                wandb.log({"epoch": step,
+                           "Training " + auc_edge: auc_dict[auc_edge]},
+                          step=step)
+            for auc_pr_edge in auc_pr_dict.keys():
+                wandb.log({"epoch": step,
+                           "Training " + auc_pr_edge: auc_pr_dict[auc_pr_edge]},
+                          step=step)
 
     def train_epoch(self):
         with tqdm.tqdm(self.train_data_loader) as tq:
@@ -119,9 +135,10 @@ class Trainer(object):
                 # # Logging
                 if (step + 1) % self.params.modelling.log_freq == 0:
                     # Compute some training set statistics
-                    auc, auc_pr = self.compute_train_auc_ap(pos_score,
-                                                            neg_score)
-                    self.log_results(step, loss, auc, auc_pr,
+                    auc_pr_dicts = self.compute_train_auc_ap(pos_score,
+                                                             neg_score)
+                    self.log_results(step, loss, auc_pr_dicts['AUC_DICT'],
+                                     auc_pr_dicts['AP_DICT'],
                                      self.params.modelling.log_freq)
 
                 tq.set_postfix({'loss': '%.03f' % loss.item()}, refresh=False)
@@ -136,6 +153,7 @@ class Trainer(object):
             wandb.watch(self.model, self.compute_loss, log="all",
                         log_freq=self.params.modelling.log_freq)
         for _ in range(1):
+            # Put model into training mode
             self.model.train()
             self.train_epoch()
 
