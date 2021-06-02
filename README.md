@@ -8,6 +8,17 @@ Repo containing MPhil thesis code for link prediction in supply chain knowledge 
 You can get started with recreating the GNN analysis by running
 `pip install -r requirements.txt`
 
+## Supply Chain Networks as Knowledge Graphs
+Modern supply chains lend themselves to a KG representation based on rich metadata regarding their 
+certifications, location, buying and selling relationships, and capabilities. A KG representation allows for
+companies to interrogate their supply chains in a novel way. Examples including finding alternative suppliers, building relationships
+(or removing relationships in nefarious instances). The following image is an extrac of 
+the KG built for an automotive suppply chain.  
+
+![some image](images/kg_extract.png)
+
+## Solution Filestructure - Multiclass classification Graph Neural Network (DGL)
+
 The file structure is laid out as follows:
 
 ```
@@ -28,15 +39,6 @@ The file structure is laid out as follows:
 |
 |---- README.md           <- The top-level README
 ```
-
-## Supply Chain Networks as Knowledge Graphs
-Modern supply chains lend themselves to a KG representation based on rich metadata regarding their 
-certifications, location, buying and selling relationships, and capabilities. A KG representation allows for
-companies to interrogate their supply chains in a novel way. Examples including finding alternative suppliers, building relationships
-(or removing relationships in nefarious instances). The following image is an extrac of 
-the KG built for an automotive suppply chain.  
-
-![some image](images/kg_extract.png)
 
 The ontology of the graph is given as:
 
