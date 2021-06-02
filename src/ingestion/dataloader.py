@@ -103,7 +103,7 @@ class SCDataLoader(object):
 
         if self.params.modelling.eval_type == 'validation':
             for node in self.nodes:
-                n_node_type = self.training_data.num_nodes(node)
+                n_node_type = self.valid_data.num_nodes(node)
                 self.valid_data.nodes[node].data['feature'] = (
                     torch.randn(n_node_type,
                                 self.params.modelling.num_node_features)
@@ -131,12 +131,11 @@ class SCDataLoader(object):
             return valid_data_loader
         else:
             for node in self.nodes:
-                n_node_type = self.training_data.num_nodes(node)
-                self.training_data.nodes[node].data['feature'] = (
+                n_node_type = self.testing_data.num_nodes(node)
+                self.testing_data.nodes[node].data['feature'] = (
                     torch.randn(n_node_type,
                                 self.params.modelling.num_node_features)
                 )
-
 
             graph_eid_dict = \
                 {etype: self.testing_data.edges(etype=etype, form='eid')
