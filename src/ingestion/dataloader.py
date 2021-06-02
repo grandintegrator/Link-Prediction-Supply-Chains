@@ -17,6 +17,12 @@ class SCDataLoader(object):
             self.full_graph = loader[0]
         self.edge_types = self.full_graph.etypes
 
+        self.nodes = ['company',
+                      'product',
+                      'certification',
+                      'country',
+                      'capability']
+
         # Class initialisations
         self.training_data = None
         self.testing_data = None
@@ -67,8 +73,7 @@ class SCDataLoader(object):
         # Create the sampler object
         self.get_training_testing()
 
-        nodes = ['company', 'product', 'certification', 'country', 'capability']
-        for node in nodes:
+        for node in self.nodes:
             n_node_type = self.training_data.num_nodes(node)
             self.training_data.nodes[node].data['feature'] = (
                 torch.randn(n_node_type,
@@ -96,25 +101,60 @@ class SCDataLoader(object):
         # Creates testing data loader for evaluation
         self.get_training_testing()
 
+        if self.params.modelling.eval_type == 'validation':
+            for node in self.nodes:
+                n_node_type = self.training_data.num_nodes(node)
+                self.valid_data.nodes[node].data['feature'] = (
+                    torch.randn(n_node_type,
+                                self.params.modelling.num_node_features)
+                )
+
+            graph_eid_dict = \
+                {etype: self.valid_data.edges(etype=etype, form='eid')
+                 for etype in self.valid_data.etypes}
+
+            # sampler = dgl.dataloading.MultiLayerFullNeighborSampler([30, 30])
+            # sampler = (
+            #     dgl.dataloading.MultiLayerNeighborSampler([60, 60])
+            # )
+            sampler = dgl.dataloading.MultiLayerFullNeighborSampler(2)
+            negative_sampler = dgl.dataloading.negative_sampler.Uniform(10)
+
+            valid_data_loader = dgl.dataloading.EdgeDataLoader(
+                self.valid_data, graph_eid_dict, sampler,
+                negative_sampler=negative_sampler,
+                batch_size=self.params.testing.batch_size,
+                shuffle=True,
+                drop_last=False,
+                # pin_memory=True,
+                num_workers=self.params.modelling.num_workers)
+            return valid_data_loader
+        else:
+            for node in self.nodes:
+                n_node_type = self.training_data.num_nodes(node)
+                self.training_data.nodes[node].data['feature'] = (
+                    torch.randn(n_node_type,
+                                self.params.modelling.num_node_features)
+                )
 
 
-        graph_eid_dict = \
-            {etype: self.testing_data.edges(etype=etype, form='eid')
-             for etype in self.testing_data.etypes}
+            graph_eid_dict = \
+                {etype: self.testing_data.edges(etype=etype, form='eid')
+                 for etype in self.testing_data.etypes}
 
-        # sampler = dgl.dataloading.MultiLayerFullNeighborSampler([30, 30])
-        # sampler = (
-        #     dgl.dataloading.MultiLayerNeighborSampler([60, 60])
-        # )
-        sampler = dgl.dataloading.MultiLayerFullNeighborSampler(2)
-        negative_sampler = dgl.dataloading.negative_sampler.Uniform(10)
+            # sampler = dgl.dataloading.MultiLayerFullNeighborSampler([30, 30])
+            # sampler = (
+            #     dgl.dataloading.MultiLayerNeighborSampler([60, 60])
+            # )
+            sampler = dgl.dataloading.MultiLayerFullNeighborSampler(2)
+            negative_sampler = dgl.dataloading.negative_sampler.Uniform(10)
 
-        test_data_loader = dgl.dataloading.EdgeDataLoader(
-            self.testing_data, graph_eid_dict, sampler,
-            negative_sampler=negative_sampler,
-            batch_size=self.params.testing.batch_size,
-            shuffle=True,
-            drop_last=False,
-            # pin_memory=True,
-            num_workers=self.params.modelling.num_workers)
-        return test_data_loader
+            test_data_loader = dgl.dataloading.EdgeDataLoader(
+                self.testing_data, graph_eid_dict, sampler,
+                negative_sampler=negative_sampler,
+                batch_size=self.params.testing.batch_size,
+                shuffle=True,
+                drop_last=False,
+                # pin_memory=True,
+                num_workers=self.params.modelling.num_workers)
+            return test_data_loader
