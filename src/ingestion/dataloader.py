@@ -67,7 +67,7 @@ class SCDataLoader(object):
         # Create the sampler object
         self.get_training_testing()
 
-        nodes = ['company', 'product', 'certification', 'country']
+        nodes = ['company', 'product', 'certification', 'country', 'capability']
         for node in nodes:
             n_node_type = self.training_data.num_nodes(node)
             self.training_data.nodes[node].data['feature'] = (
@@ -95,18 +95,9 @@ class SCDataLoader(object):
     def get_test_data_loader(self) -> dgl.dataloading.EdgeDataLoader:
         # Creates testing data loader for evaluation
         self.get_training_testing()
-        n_companies = self.testing_data.num_nodes('company')
-        n_products = self.testing_data.num_nodes('product')
-        n_hetero_features = self.params.modelling.num_node_features
 
-        # Initialise the training data features
-        self.testing_data.nodes['company'].data['feature'] = (
-            torch.randn(n_companies, n_hetero_features)
-        )
 
-        self.testing_data.nodes['product'].data['feature'] = (
-            torch.randn(n_products, n_hetero_features)
-        )
+
         graph_eid_dict = \
             {etype: self.testing_data.edges(etype=etype, form='eid')
              for etype in self.testing_data.etypes}

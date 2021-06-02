@@ -1,3 +1,4 @@
+import logging
 import tqdm
 import wandb
 import torch.optim as optim
@@ -35,6 +36,7 @@ class Trainer(object):
     def compute_loss(self, pos_score, neg_score):
         # For computing the pos and negative score just for the inference edge
         # TODO: Extend this for multiple edge types with cross_entropy loss
+        # TODO: Add in option for impact of losses
         pos_score = pos_score[self.edge_inference]
         neg_score = neg_score[self.edge_inference]
         n = pos_score.shape[0]
@@ -83,7 +85,7 @@ class Trainer(object):
                 #     positive_graph = positive_graph.to(torch.device('cuda'))
                 #     negative_graph = negative_graph.to(torch.device('cuda'))
                 # Put model into training mode
-                self.model.train()
+                # self.model.train()
                 # Need to ensure that all node types have been captured
                 if any([b.num_edges(edge_type) == 0 for b in blocks
                         for edge_type in blocks[0].etypes]):

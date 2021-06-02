@@ -2,7 +2,7 @@ data:
   path: "/Users/tim-bhp/PycharmProjects/link_predictions_supply_chains/Link-Prediction-Supply-Chains/data/02_intermediate"
 
 device: 'cpu' # change to 'cuda' for GPU
-stream_wandb: False
+stream_wandb: True
 
 # Config for running data engineering from scratch...
 de:
@@ -29,7 +29,7 @@ modelling:
   num_workers: 0
   loss: "binary_cross_entropy" # Or could also be 'margin'
   log_freq: 20
-
+  eval_type: 'validation' # Validation or testing
 # Graph Neural Network training parameters (not mutually exclusive with above)
 net:
   lr: 1e-3
