@@ -30,7 +30,8 @@ class SCDataLoader(object):
 
     def get_training_testing(self) -> None:
         """
-        # TODO: Add in validation split too - not just train, test
+        # Splits the edges into an independent training, validation, and testing
+        set for inference.
         """
         # randomly generate training masks for our buys_from edges
         # Need to make sure this is reproducible.

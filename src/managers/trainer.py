@@ -1,6 +1,7 @@
 import logging
 import tqdm
 import wandb
+import torch
 import torch.optim as optim
 import torch.nn.functional as F
 from torch import cat, ones, zeros
@@ -37,21 +38,32 @@ class Trainer(object):
         # For computing the pos and negative score just for the inference edge
         # TODO: Extend this for multiple edge types with cross_entropy loss
         # TODO: Add in option for impact of losses
-        pos_score = pos_score[self.edge_inference]
-        neg_score = neg_score[self.edge_inference]
-        n = pos_score.shape[0]
+        assert pos_score.keys() == neg_score.keys()
+        all_losses = []
+        for given_type in pos_score.keys():
+            pos_score_edge = pos_score[given_type]
+            neg_score_edge = neg_score[given_type]
+            n = pos_score_edge.shape[0]
+            if n == 0:
+                continue
+            if self.params.net.loss == 'margin':
 
-        if self.params.net.loss == 'margin':
-            margin_loss = (
-                (neg_score.view(n, -1) - pos_score.view(n, -1) + 1)
-                    .clamp(min=0).mean()
-            )
-            return margin_loss
-        elif self.params.net.loss == 'binary_cross_entropy':
-            scores = cat([pos_score, neg_score])
-            labels = cat([ones(pos_score.shape[0]), zeros(neg_score.shape[0])])
-            scores = scores.view(len(scores), -1).mean(dim=1)  # Fixing dims
-            return F.binary_cross_entropy_with_logits(scores, labels)
+                margin_loss = (
+                    (neg_score_edge.view(n, -1) -
+                     pos_score_edge.view(n, -1) + 1)
+                        .clamp(min=0).mean()
+                )
+                all_losses.append(margin_loss)
+            elif self.params.net.loss == 'binary_cross_entropy':
+                scores = cat([pos_score_edge, neg_score_edge])
+                labels = \
+                    cat([ones(pos_score_edge.shape[0]),
+                         zeros(neg_score_edge.shape[0])])
+                scores = scores.view(len(scores), -1).mean(dim=1)  # Fixing dims
+                binary_cross_entropy = \
+                    F.binary_cross_entropy_with_logits(scores, labels)
+                all_losses.append(binary_cross_entropy)
+        return torch.stack(all_losses, dim=0).mean()
 
     def compute_train_auc_ap(self, pos_score, neg_score) -> List:
         # TODO: Extend this for multiple edge types - multi-class accuracy
@@ -70,9 +82,9 @@ class Trainer(object):
     @staticmethod
     def log_results(step, loss, auc, auc_pr, log_freq) -> None:
         if (step + 1) % log_freq == 0:
-            wandb.log({"epoch": step, "loss": loss}, step=step)
-            wandb.log({"epoch": step, "auc": auc}, step=step)
-            wandb.log({"epoch": step, "av_precision": auc_pr},
+            wandb.log({"epoch": step, "Training loss": loss}, step=step)
+            wandb.log({"epoch": step, "Training auc": auc}, step=step)
+            wandb.log({"epoch": step, "Training av_precision": auc_pr},
                       step=step)
 
     def train_epoch(self):
@@ -80,16 +92,16 @@ class Trainer(object):
             for step, (input_nodes, positive_graph, negative_graph,
                        blocks) in enumerate(tq):
                 # For transferring to CUDA when I finally get a GPU
-                # self.params.modelling.device == 'gpu':
-                #     blocks = [b.to(torch.device('cuda')) for b in blocks]
-                #     positive_graph = positive_graph.to(torch.device('cuda'))
-                #     negative_graph = negative_graph.to(torch.device('cuda'))
-                # Put model into training mode
-                # self.model.train()
+                if self.params.modelling.device == 'gpu':
+                    blocks = [b.to(torch.device('cuda')) for b in blocks]
+                    positive_graph = positive_graph.to(torch.device('cuda'))
+                    negative_graph = negative_graph.to(torch.device('cuda'))
+
                 # Need to ensure that all node types have been captured
                 if any([b.num_edges(edge_type) == 0 for b in blocks
                         for edge_type in blocks[0].etypes]):
                     # Jump to next mini-batch because this one is invalid.
+                    # logging.info('Sampled bad training batch')
                     continue
 
                 input_features = blocks[0].srcdata['feature']
@@ -99,7 +111,7 @@ class Trainer(object):
                                                   x=input_features)
                 loss = self.compute_loss(pos_score, neg_score)
 
-                # <--- Back Prop :)
+                # <---: Back Prop :)
                 self.opt.zero_grad()
                 loss.backward()
                 self.opt.step()
@@ -109,7 +121,6 @@ class Trainer(object):
                     # Compute some training set statistics
                     auc, auc_pr = self.compute_train_auc_ap(pos_score,
                                                             neg_score)
-
                     self.log_results(step, loss, auc, auc_pr,
                                      self.params.modelling.log_freq)
 
@@ -125,7 +136,7 @@ class Trainer(object):
             wandb.watch(self.model, self.compute_loss, log="all",
                         log_freq=self.params.modelling.log_freq)
         for _ in range(1):
-            # self.model.train()
+            self.model.train()
             self.train_epoch()
 
     def __repr__(self):
