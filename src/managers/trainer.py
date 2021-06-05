@@ -9,6 +9,7 @@ from sklearn.metrics import roc_auc_score
 from sklearn.metrics import average_precision_score
 from typing import Dict, Any
 from model.dgl.StochasticRGCN import ScorePredictor
+import pandas as pd
 
 
 class Trainer(object):
@@ -33,6 +34,11 @@ class Trainer(object):
             self.opt = optim.Adam(self.model.parameters(),
                                   lr=self.params.net.lr,
                                   weight_decay=self.params.net.l2_regularisation)
+
+        if self.params.log_company_accuracy:
+            save_path = self.params.de.graph_save_path
+            self.triplets = \
+                pd.read_parquet(save_path + 'triplets.parquet')
 
     def compute_loss(self, pos_score, neg_score):
         # For computing the pos and negative score just for the inference edge
@@ -67,14 +73,14 @@ class Trainer(object):
 
     @staticmethod
     def compute_train_auc_ap(pos_score, neg_score) -> Dict[str, Any]:
-        # TODO: Extend this for multiple edge types - multi-class accuracy
-        #   or 1 vs All?
         # Compute the AUC per type
         auc_dict = {}
         ap_dict = {}
         for given_edge_type in pos_score.keys():
             pos_score_edge = pos_score[given_edge_type]
             neg_score_edge = neg_score[given_edge_type]
+            if pos_score_edge.shape[0] == 0:
+                continue
             scores = (
                 cat([pos_score_edge, neg_score_edge]).detach().numpy()
             )
@@ -137,9 +143,14 @@ class Trainer(object):
                     # Compute some training set statistics
                     auc_pr_dicts = self.compute_train_auc_ap(pos_score,
                                                              neg_score)
-                    self.log_results(step, loss, auc_pr_dicts['AUC_DICT'],
-                                     auc_pr_dicts['AP_DICT'],
-                                     self.params.modelling.log_freq)
+
+                    if self.params.log_company_accuracy:
+                        positive_graph.edges(type='eid')
+
+                    if self.params.stream_wandb:
+                        self.log_results(step, loss, auc_pr_dicts['AUC_DICT'],
+                                         auc_pr_dicts['AP_DICT'],
+                                         self.params.modelling.log_freq)
 
                 tq.set_postfix({'loss': '%.03f' % loss.item()}, refresh=False)
                 # Break if number of epochs has been satisfied

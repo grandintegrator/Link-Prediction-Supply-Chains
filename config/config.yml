@@ -3,6 +3,14 @@ data:
 
 device: 'cpu' # change to 'cuda' for GPU
 stream_wandb: True
+log_company_accuracy: False
+
+node_features:
+  company: 20
+  product: 20
+  country: 5
+  capability: 5
+  certification: 10
 
 # Config for running data engineering from scratch...
 de:
@@ -30,13 +38,13 @@ modelling:
   loss: "binary_cross_entropy" # Or could also be 'margin'
   log_freq: 20
   eval_type: 'validation' # Validation or testing
+
 # Graph Neural Network training parameters (not mutually exclusive with above)
 net:
   lr: 1e-3
   optimiser: "Adam"
   l2_regularisation: 5e-4 # Regularisation term for the GNN weights
   loss: "binary_cross_entropy" # Or could also be 'margin'
-#  inference_edge: ('company', 'buys_from', 'company')
 
 testing:
   batch_size: 2048
