@@ -143,6 +143,9 @@ class Trainer(object):
                     # Compute some training set statistics
                     auc_pr_dicts = self.compute_train_auc_ap(pos_score,
                                                              neg_score)
+                    from utils import save_best_metrics
+                    if self.params.save_results:
+                        save_best_metrics(results_dict=auc_pr_dicts)
 
                     if self.params.log_company_accuracy:
                         positive_graph.edges(type='eid')
@@ -163,10 +166,20 @@ class Trainer(object):
             wandb.init()
             wandb.watch(self.model, self.compute_loss, log="all",
                         log_freq=self.params.modelling.log_freq)
-        for _ in range(1):
-            # Put model into training mode
-            self.model.train()
-            self.train_epoch()
+            for _ in range(1):
+                # Put model into training mode
+                self.model.train()
+                self.train_epoch()
+            wandb.finish()
+        else:
+            for _ in range(1):
+                # Put model into training mode
+                self.model.train()
+                self.train_epoch()
 
     def __repr__(self):
-        return "Training manager class"
+        return "Training Manager class"
+
+
+
+

@@ -2,8 +2,9 @@ data:
   path: "/Users/tim-bhp/PycharmProjects/link_predictions_supply_chains/Link-Prediction-Supply-Chains/data/02_intermediate"
 
 device: 'cpu' # change to 'cuda' for GPU
-stream_wandb: True
+stream_wandb: False
 log_company_accuracy: False
+save_results: True
 
 node_features:
   company: 20
@@ -25,7 +26,7 @@ plotting:
   path: 'data/04_results/'
 
 modelling:
-  num_node_features: 15
+  num_node_features: 50
   num_hidden_graph_layers: 16
   num_negative_samples: 3
   num_classes: 2

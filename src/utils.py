@@ -12,12 +12,34 @@ import matplotlib.pyplot as plt
 import traceback
 from _thread import start_new_thread
 from functools import wraps
-
+from typing import Dict, Any
 import torch
 from torch.multiprocessing import Queue
 import dgl
 import logging
 from model.dgl.StochasticRGCN import Model
+import wandb
+
+
+def save_best_metrics(path: str) -> None:
+    """Function saves the latest run from the weights and biases logs
+    """
+    api = wandb.Api()
+    runs = api.runs('Link-Prediction-Supply-Chains')
+    # Get names from runs API if there is an AUC or AP in the log name
+    auc_ap_names = \
+        [name for name in runs.objects[0].summary.keys() if
+         ('Training AUC' in name) or
+         ('Training AP' in name)]
+    run_summary_dict = runs.objects[0].summary
+    run_summary_filtered = (
+        {auc_ap: run_summary_dict[auc_ap] for auc_ap in auc_ap_names}
+    )
+    # Turn the dictionary into a pandas dataframe for saving into results.
+    summary_dictionary = (
+        pd.DataFrame(run_summary_filtered, index=['Best Training Value']).T
+    )
+    summary_dictionary.to_csv(path + 'wandb-final-' + runs.objects[0].name)
 
 
 def create_model(params, graph_edge_types):

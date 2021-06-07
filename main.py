@@ -8,7 +8,7 @@ from managers.trainer import Trainer
 from managers.evaluator import Evaluator
 from warnings import simplefilter
 from ingestion.dataloader import SCDataLoader
-
+from utils import save_best_metrics
 from box import Box
 from utils import create_model
 
@@ -44,11 +44,11 @@ def main(run_args) -> None:
 
     trainer = Trainer(params=config, model=graph_model,
                       train_data_loader=train_loader)
-
     logging.info('Starting training of model...')
     trainer.train()
+    save_best_metrics(path=config.plotting.path)
 
-    logging.info('Evaluating model on testing data...')
+    logging.info('Saved Training results. Evaluating model on testing data...')
     test_loader = data_loader.get_test_data_loader()
     evaluator = Evaluator(params=config, model=trainer.model,
                           testing_data_loader=test_loader)

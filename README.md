@@ -6,7 +6,8 @@ Repo containing MPhil thesis code for link prediction in supply chain knowledge 
 
 ## Getting started
 You can get started with recreating the GNN analysis by running
-`pip install -r requirements.txt`
+`pip install -r requirements.txt` followed by running the training and testing scripts with:
+`python3 main.py --cpu` (alternatively `--gpu` if you are lucky enough to have one 🌝)
 
 ## Supply Chain Networks as Knowledge Graphs
 Modern supply chains lend themselves to a KG representation based on rich metadata regarding their 
