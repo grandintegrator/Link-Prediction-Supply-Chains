@@ -4,30 +4,79 @@ import random
 from tqdm import tqdm
 import networkx as nx
 import numpy as np
-from sklearn.metrics import classification_report, log_loss, roc_curve, roc_auc_score, precision_recall_curve, \
+from sklearn.metrics import (
+    classification_report,
+    log_loss,
+    roc_curve,
+    roc_auc_score,
+    precision_recall_curve,
     average_precision_score
+)
 
 import pandas as pd
 import matplotlib.pyplot as plt
 import traceback
 from _thread import start_new_thread
 from functools import wraps
-
+from typing import Dict, Any
 import torch
 from torch.multiprocessing import Queue
 import dgl
 import logging
 from model.dgl.StochasticRGCN import Model
+import wandb
+
+
+def save_best_metrics(path: str) -> None:
+    """Function saves the latest run from the weights and biases logs
+    """
+    api = wandb.Api()
+    runs = api.runs('Link-Prediction-Supply-Chains')
+    runs = api.runs('Link-Prediction-Supply-Chains')
+    # Get names from runs API if there is an AUC or AP in the log name
+    all_runs = runs.objects
+    latest_run = all_runs[0]
+
+    # auc_ap_names = (
+    #     [name for name in runs.objects[0].summary.keys() if
+    #      ('Training AUC' in name) or ('Training AP' in name)]
+    # )
+
+    auc_ap_names = ['Training AUC makes_product',
+                    'Training AP has_capability',
+                    'Training AP has_cert',
+                    'Training AUC has_cert',
+                    'Training AP located_in',
+                    'Training AP buys_from',
+                    'Training AP makes_product',
+                    'Training AUC complimentary_product_to',
+                    'Training AP complimentary_product_to',
+                    'Training AUC located_in',
+                    'Training AP capability_produces',
+                    'Training AUC has_capability',
+                    'Training AUC buys_from',
+                    'Training AUC capability_produces']
+
+    run_summary_dict = latest_run.summary
+    run_summary_filtered = (
+        {auc_ap: run_summary_dict[auc_ap] for auc_ap in auc_ap_names}
+    )
+    # Turn the dictionary into a pandas dataframe for saving into results.
+    summary_dictionary = (
+        pd.DataFrame(run_summary_filtered, index=['Best Training Value']).T
+    )
+    summary_dictionary.to_csv(path + 'wandb-final-' + latest_run.name +
+                              '.csv')
 
 
 def create_model(params, graph_edge_types):
     # device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     # in_features, hidden_features, out_features, num_classes,
     # etypes):
-    model = Model(in_features=params.modelling.num_node_features,
-                  hidden_features=params.modelling.num_hidden_graph_layers,
-                  out_features=params.modelling.num_node_features,
-                  num_classes=params.modelling.num_classes,
+    model = Model(in_features=params.num_node_features,
+                  hidden_features=params.num_hidden_graph_layers,
+                  out_features=params.num_node_features,
+                  num_classes=params.num_classes,
                   etypes=graph_edge_types)
     return model
 

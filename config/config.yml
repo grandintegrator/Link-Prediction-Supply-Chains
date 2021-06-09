@@ -3,47 +3,52 @@ data:
 
 device: 'cpu' # change to 'cuda' for GPU
 stream_wandb: True
+log_company_accuracy: False
+save_train_results: False
+
+# Which part of the pipeline to run.
+run_training: True
+run_validation: False
+run_testing: False
+
+#node_features:
+#  company: 20
+#  product: 20
+#  country: 5
+#  capability: 5
+#  certification: 10
 
 # Config for running data engineering from scratch...
-de:
-  from_scratch: False  # Recreate everything from scratch
-  triplets_from_scratch: False  # Recreate all triplets
-  load_graph: True  # Loading the already saved DGL Graph into Memory
-  capability_product_weight_cut: 200
-  cg_weight_cut: 30
-  graph_save_path: 'data/02_intermediate/'
+load_graph: True # Loading the already saved DGL Graph into Memory
+from_scratch: False  # Recreate everything from scratch
+triplets_from_scratch: False  # Recreate all triplets
 
-plotting:
-  path: 'data/04_results/'
+# Data Engineering entries.
+capability_product_weight_cut: 200
+cg_weight_cut: 30
+graph_save_path: 'data/02_intermediate/'
+plotting_path: 'data/04_results/'
 
-modelling:
-  num_node_features: 15
-  num_hidden_graph_layers: 16
-  num_negative_samples: 3
-  num_classes: 2
-  batch_size: 64 # Mini batch size for the graph
-  num_epochs: 8000
-  evaluate_every: 3 # How many epochs should pass before an evaluation run?
-  test_p: 0.1
-  valid_p: 0.2
-  num_workers: 0
-  loss: "binary_cross_entropy" # Or could also be 'margin'
-  log_freq: 20
-  eval_type: 'validation' # Validation or testing
+# Modelling parameters
+num_node_features: 15
+num_hidden_graph_layers: 16
+num_negative_samples: 3
+num_classes: 2
+batch_size: 64 # Mini batch size for the graph
+num_epochs: 8000
+evaluate_every: 3 # How many epochs should pass before an evaluation run?
+test_p: 0.1
+valid_p: 0.2
+num_workers: 0
+loss: "binary_cross_entropy" # Or could also be 'margin'
+log_freq: 20
+eval_type: 'validation' # Validation or testing
+
 # Graph Neural Network training parameters (not mutually exclusive with above)
-net:
-  lr: 1e-3
-  optimiser: "Adam"
-  l2_regularisation: 5e-4 # Regularisation term for the GNN weights
-  loss: "binary_cross_entropy" # Or could also be 'margin'
-#  inference_edge: ('company', 'buys_from', 'company')
+lr: 1e-3
+optimiser: "Adam"
+l2_regularisation: 5e-4 # Regularisation term for the GNN weights
 
-testing:
-  batch_size: 2048
-  log_freq: 10
-
-embedding_net:
-  lr: 1e-4
-  optimiser: "Adam"
-  l2_regularisation: 5e-4
-  loss: 'margin'
+#testing:
+#  batch_size: 2048
+#  log_freq: 10

@@ -4,14 +4,14 @@ import torch
 import logging
 import numpy as np
 import yaml
+
 from managers.trainer import Trainer
 from managers.evaluator import Evaluator
 from warnings import simplefilter
 from ingestion.dataloader import SCDataLoader
-
+from utils import save_best_metrics
 from box import Box
 from utils import create_model
-
 
 ################################################################################
 # Deterministic behaviour for experimentation
@@ -33,7 +33,7 @@ def main(run_args) -> None:
                      default_box_attr=None)
 
     logging.info('============================================================')
-    logging.info(f'The following run args have been run \n {config.to_dict()}')
+    logging.info(f'The following run args have been run \n {config}')
     logging.info('============================================================')
 
     data_loader = SCDataLoader(params=config)
@@ -45,18 +45,22 @@ def main(run_args) -> None:
     trainer = Trainer(params=config, model=graph_model,
                       train_data_loader=train_loader)
 
-    logging.info('Starting training of model...')
-    trainer.train()
-
-    logging.info('Evaluating model on testing data...')
     test_loader = data_loader.get_test_data_loader()
     evaluator = Evaluator(params=config, model=trainer.model,
                           testing_data_loader=test_loader)
-    metrics_test = evaluator.evaluate()
-    logging.info('============================================================')
-    logging.info(f'After {config.modelling.num_epochs} epochs \n')
-    logging.info(f"Got an AUC of  {metrics_test['auc_mean']}")
-    logging.info('============================================================')
+
+    if config.run_training:
+        logging.info('Starting training of model...')
+        trainer.train()
+    if config.save_train_results:
+        save_best_metrics(path=config.plotting.path)
+        logging.info('Saved Training results.')
+    if config.run_validation:
+        metrics_test = evaluator.evaluate()
+        logging.info('========================================================')
+        logging.info(f'After {config.modelling.num_epochs} epochs \n')
+        logging.info(f"Got an AUC of  {metrics_test['auc_mean']}")
+        logging.info('========================================================')
 
 
 if __name__ == '__main__':
