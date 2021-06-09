@@ -4,12 +4,13 @@ import wandb
 import torch
 import torch.optim as optim
 import torch.nn.functional as F
+import pandas as pd
 from torch import cat, ones, zeros
 from sklearn.metrics import roc_auc_score
 from sklearn.metrics import average_precision_score
 from typing import Dict, Any
 from model.dgl.StochasticRGCN import ScorePredictor
-import pandas as pd
+from utils import save_best_metrics
 
 
 class Trainer(object):
@@ -17,28 +18,29 @@ class Trainer(object):
         self.params = params
         self.model = model
         self.train_data_loader = train_data_loader
-        self.edge_inference = ('company', 'buys_from', 'company')
         self.predictor = ScorePredictor().to(params.device)
-
-        # Fixing parameter types because Box doesn't do this naturally.
-        self.params.net.lr = float(self.params.net.lr)
-        self.params.net.l2_regularisation = \
-            float(self.params.net.l2_regularisation)
-
-        # Could probably turn this into a function if we want to try others
-        if params.net.optimiser == 'SGD':
-            self.opt = optim.SGD(self.model.parameters(), lr=self.params.net.lr,
-                                 momentum=self.params.net.momentum,
-                                 weight_decay=self.params.net.l2_regularisation)
-        elif params.net.optimiser == 'Adam':
-            self.opt = optim.Adam(self.model.parameters(),
-                                  lr=self.params.net.lr,
-                                  weight_decay=self.params.net.l2_regularisation)
+        self.opt = None
 
         if self.params.log_company_accuracy:
-            save_path = self.params.de.graph_save_path
+            save_path = self.params.graph_save_path
             self.triplets = \
                 pd.read_parquet(save_path + 'triplets.parquet')
+
+    def make_optimiser(self):
+        # Fixing parameter types because Box doesn't do this naturally.
+        self.params.lr = float(self.params.lr)
+        self.params.l2_regularisation = \
+            float(self.params.l2_regularisation)
+
+        # Could probably turn this into a function if we want to try others
+        if self.params.optimiser == 'SGD':
+            self.opt = optim.SGD(self.model.parameters(), lr=self.params.lr,
+                                 momentum=self.params.momentum,
+                                 weight_decay=self.params.l2_regularisation)
+        elif self.params.optimiser == 'Adam':
+            self.opt = optim.Adam(self.model.parameters(),
+                                  lr=self.params.lr,
+                                  weight_decay=self.params.l2_regularisation)
 
     def compute_loss(self, pos_score, neg_score):
         # For computing the pos and negative score just for the inference edge
@@ -52,7 +54,7 @@ class Trainer(object):
             n = pos_score_edge.shape[0]
             if n == 0:
                 continue
-            if self.params.net.loss == 'margin':
+            if self.params.loss == 'margin':
 
                 margin_loss = (
                     (neg_score_edge.view(n, -1) -
@@ -60,7 +62,7 @@ class Trainer(object):
                         .clamp(min=0).mean()
                 )
                 all_losses.append(margin_loss)
-            elif self.params.net.loss == 'binary_cross_entropy':
+            elif self.params.loss == 'binary_cross_entropy':
                 scores = cat([pos_score_edge, neg_score_edge])
                 labels = \
                     cat([ones(pos_score_edge.shape[0]),
@@ -114,7 +116,7 @@ class Trainer(object):
             for step, (input_nodes, positive_graph, negative_graph,
                        blocks) in enumerate(tq):
                 # For transferring to CUDA when I finally get a GPU
-                if self.params.modelling.device == 'gpu':
+                if self.params.device == 'gpu':
                     blocks = [b.to(torch.device('cuda')) for b in blocks]
                     positive_graph = positive_graph.to(torch.device('cuda'))
                     negative_graph = negative_graph.to(torch.device('cuda'))
@@ -123,7 +125,6 @@ class Trainer(object):
                 if any([b.num_edges(edge_type) == 0 for b in blocks
                         for edge_type in blocks[0].etypes]):
                     # Jump to next mini-batch because this one is invalid.
-                    # logging.info('Sampled bad training batch')
                     continue
 
                 input_features = blocks[0].srcdata['feature']
@@ -139,13 +140,10 @@ class Trainer(object):
                 self.opt.step()
 
                 # # Logging
-                if (step + 1) % self.params.modelling.log_freq == 0:
+                if (step + 1) % self.params.log_freq == 0:
                     # Compute some training set statistics
                     auc_pr_dicts = self.compute_train_auc_ap(pos_score,
                                                              neg_score)
-                    from utils import save_best_metrics
-                    if self.params.save_results:
-                        save_best_metrics(results_dict=auc_pr_dicts)
 
                     if self.params.log_company_accuracy:
                         positive_graph.edges(type='eid')
@@ -153,19 +151,20 @@ class Trainer(object):
                     if self.params.stream_wandb:
                         self.log_results(step, loss, auc_pr_dicts['AUC_DICT'],
                                          auc_pr_dicts['AP_DICT'],
-                                         self.params.modelling.log_freq)
+                                         self.params.log_freq)
 
                 tq.set_postfix({'loss': '%.03f' % loss.item()}, refresh=False)
                 # Break if number of epochs has been satisfied
-                if step == self.params.modelling.num_epochs:
+                if step == self.params.num_epochs:
                     break
 
     def train(self):
         # wandb login --relogin of you would like to log data into W&B
+        self.make_optimiser()
         if self.params.stream_wandb:
-            wandb.init()
+            # wandb.init(config=dict(self.params))
             wandb.watch(self.model, self.compute_loss, log="all",
-                        log_freq=self.params.modelling.log_freq)
+                        log_freq=self.params.log_freq)
             for _ in range(1):
                 # Put model into training mode
                 self.model.train()
@@ -177,9 +176,8 @@ class Trainer(object):
                 self.model.train()
                 self.train_epoch()
 
+        if self.params.save_train_results:
+            save_best_metrics(self.params.plotting_path)
+
     def __repr__(self):
         return "Training Manager class"
-
-
-
-

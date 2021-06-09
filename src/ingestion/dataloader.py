@@ -11,7 +11,7 @@ class SCDataLoader(object):
                                              from_scratch=False,
                                              triplets_from_scratch=False,
                                              load_graph=True)
-        if params.de.load_graph:
+        if params.load_graph:
             self.full_graph = loader[0][0]
         else:
             self.full_graph = loader[0]
@@ -48,8 +48,8 @@ class SCDataLoader(object):
             # maintained.
             assert len(src) == len(dst)
 
-            test_size = int(self.params.modelling.test_p * len(src))
-            valid_size = int(self.params.modelling.valid_p*len(src))
+            test_size = int(self.params.test_p * len(src))
+            valid_size = int(self.params.valid_p*len(src))
             train_size = len(src) - valid_size - test_size
 
             # Source and destinations for training
@@ -78,7 +78,7 @@ class SCDataLoader(object):
             n_node_type = self.training_data.num_nodes(node)
             self.training_data.nodes[node].data['feature'] = (
                 torch.randn(n_node_type,
-                            self.params.modelling.num_node_features)
+                            self.params.num_node_features)
             )
 
         graph_eid_dict = \
@@ -91,23 +91,23 @@ class SCDataLoader(object):
         train_data_loader = dgl.dataloading.EdgeDataLoader(
             self.training_data, graph_eid_dict, sampler,
             negative_sampler=negative_sampler,
-            batch_size=self.params.modelling.batch_size,
+            batch_size=self.params.batch_size,
             shuffle=True,
             drop_last=False,
             pin_memory=True,
-            num_workers=self.params.modelling.num_workers)
+            num_workers=self.params.num_workers)
         return train_data_loader
 
     def get_test_data_loader(self) -> dgl.dataloading.EdgeDataLoader:
         # Creates testing data loader for evaluation
         self.get_training_testing()
 
-        if self.params.modelling.eval_type == 'validation':
+        if self.params.eval_type == 'validation':
             for node in self.nodes:
                 n_node_type = self.valid_data.num_nodes(node)
                 self.valid_data.nodes[node].data['feature'] = (
                     torch.randn(n_node_type,
-                                self.params.modelling.num_node_features)
+                                self.params.num_node_features)
                 )
 
             graph_eid_dict = \
@@ -124,18 +124,18 @@ class SCDataLoader(object):
             valid_data_loader = dgl.dataloading.EdgeDataLoader(
                 self.valid_data, graph_eid_dict, sampler,
                 negative_sampler=negative_sampler,
-                batch_size=self.params.testing.batch_size,
+                batch_size=self.params.batch_size,
                 shuffle=True,
                 drop_last=False,
                 # pin_memory=True,
-                num_workers=self.params.modelling.num_workers)
+                num_workers=self.params.num_workers)
             return valid_data_loader
         else:
             for node in self.nodes:
                 n_node_type = self.testing_data.num_nodes(node)
                 self.testing_data.nodes[node].data['feature'] = (
                     torch.randn(n_node_type,
-                                self.params.modelling.num_node_features)
+                                self.params.num_node_features)
                 )
 
             graph_eid_dict = \
@@ -152,9 +152,9 @@ class SCDataLoader(object):
             test_data_loader = dgl.dataloading.EdgeDataLoader(
                 self.testing_data, graph_eid_dict, sampler,
                 negative_sampler=negative_sampler,
-                batch_size=self.params.testing.batch_size,
+                batch_size=self.params.batch_size,
                 shuffle=True,
                 drop_last=False,
                 # pin_memory=True,
-                num_workers=self.params.modelling.num_workers)
+                num_workers=self.params.num_workers)
             return test_data_loader

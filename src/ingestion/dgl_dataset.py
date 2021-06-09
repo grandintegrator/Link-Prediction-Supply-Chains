@@ -38,15 +38,15 @@ class SupplyKnowledgeGraphDataset(DGLDataset):
         # Load dataset from dataset.py
         # Spits an object with all sanitised data (with nice lower names, etc.)
         ########################################################################
-        self.triplets_from_scratch = params.de.triplets_from_scratch
-        self.load_graph = params.de.load_graph
+        self.triplets_from_scratch = params.triplets_from_scratch
+        self.load_graph = params.load_graph
         self.data_path = path
 
         dataset_generator = KnowledgeGraphGenerator(params=params,
                                                     path=self.data_path)
-        dataset = dataset_generator.load(from_scratch=params.de.from_scratch,
+        dataset = dataset_generator.load(from_scratch=params.from_scratch,
                                          path=self.data_path)
-        if params.de.from_scratch:
+        if params.from_scratch:
             logger.info('Loaded graphs with the following dimensions:')
             logger.info('====================================================')
             logger.info(f'cG has {len(dataset.cG_clean.edges)} edges')

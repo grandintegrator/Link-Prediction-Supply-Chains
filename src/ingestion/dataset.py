@@ -44,7 +44,7 @@ class KnowledgeGraphGenerator(object):
 
         """
         self.params = params
-        self.save_graph_path = self.params.de.graph_save_path
+        self.save_graph_path = self.params.graph_save_path
         ########################################################################
         # Load pickled objects from Edward's analysis
         ########################################################################
@@ -110,7 +110,7 @@ class KnowledgeGraphGenerator(object):
         Returns: cG for further analysis but without weights that are too high
 
         """
-        cut_threshold = self.params.de.cg_weight_cut
+        cut_threshold = self.params.cg_weight_cut
 
         cg_graph = \
             nx.to_pandas_edgelist(self.cG)
@@ -534,7 +534,7 @@ class KnowledgeGraphGenerator(object):
         Remove edges from the capability -> product graph depending on the
         cut threshold provided by the parameters.
         """
-        cut_threshold = self.params.de.capability_product_weight_cut
+        cut_threshold = self.params.capability_product_weight_cut
 
         capability_product_graph = \
             nx.to_pandas_edgelist(self.capability_product_graph)
