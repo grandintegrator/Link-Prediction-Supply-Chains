@@ -7,9 +7,9 @@ num_negative_samples:
 num_classes:
   value: 2
 batch_size: # 64 # Mini batch size for the graph
-  values: [32, 64, 128, 256, 512]
+  values: [12, 32, 64, 128]
 num_epochs:
-  values: [8000, 2000, 500, 1000, 6000]
+  values: [8000, 2000, 500, 1000]
 evaluate_every:
   value: 3 # How many epochs should pass before an evaluation run?
 test_p:
