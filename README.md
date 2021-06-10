@@ -18,29 +18,6 @@ the KG built for an automotive suppply chain.
 
 ![some image](images/kg_extract.png)
 
-## Solution Filestructure - Multiclass classification Graph Neural Network (DGL)
-
-The file structure is laid out as follows:
-
-```
-|---- config              <- Project configurations
-    |-- config.yml        <- For changing run paramteres (e.g. number of epochs 🌝)
-|
-|---- data
-    |-- 01_raw            <- Data from third party sources.
-    |-- 02_intermediate   <- Intermediate data that has been transformed.
-    |-- 03_models         <- Saved GNN models 
-    |-- 04_results        <- Results from the analysis 🚀
-|
-|---- src
-    |-- exploration       <- Exploring the underlying data (e.g. degree distributions)
-    |-- ingestion         <- Transforming the complex network into a Knowledge Graph and build Pytorch dataloaders
-    |-- managers          <- Training and testing managers for pytorch (`training.py` and `testing.py`)
-    |-- model             <- DGL Models
-|
-|---- README.md           <- The top-level README
-```
-
 The ontology of the graph is given as:
 
 Nodes | Number
@@ -48,14 +25,14 @@ Nodes | Number
 company (e.g. General Motors)| 119,599
 product (e.g. Floor mat) | 119,618
 capability (e.g. Machining) | 36
-certification (e.g. ISO9001) | 9'
+certification (e.g. ISO9001) | 9
 
 Edges in the ontology
 
 Edges | Number
 ------------ | -------------
 ('capability', 'capability_produces', 'product') | 21,857
-('company', 'buys_from', 'company') | 88997
+('company', 'buys_from', 'company') | 88,997
 ('company', 'has_capability', 'capability') |  83,787
 ('company', 'has_cert', 'certification') | 32,654
 ('company', 'located_in', 'country') | 40,421
@@ -69,4 +46,65 @@ TODO: Topics to mention:
 - Inductive vs transductive learning
 - Graph Neural Networks for large scale KG Completion
 - 
+
+
+## Solution Filestructure - Multiclass classification Graph Neural Network (DGL)
+
+The file structure is laid out as follows:
+
+```bash
+├── README.md                                   # The top-level README
+├── config                                      # 🏃🏻 Run Project configurations
+│   ├── config.yml                              # For changing run parameters (e.g. number of epochs 🌝)
+│   └── sweep_config.yml
+├── data                                        # 👀 Ask for GDrive Access
+│   ├── 01_raw                                  # 💾 Data from third party sources.
+│   │   ├── raw_df.pkl
+│   │   └── supplier_product_df.parquet
+│   ├── 02_intermediate                         # 💪🏼 Intermediate data that has been transformed.
+│   │   ├── G.pickle
+│   │   ├── bG.pickle
+│   │   ├── cG.pickle
+│   │   ├── dataset
+│   │   ├── dataset.pickle
+│   │   ├── marklinesEdges.p
+│   ├── 03_models                               # Saved GNN models 
+│   └── 04_results                              # Results from the analysis 🚀
+├── images
+│   └── kg_extract.png
+├── main.py
+├── notebooks                                   # 👨🏻‍💻 Exploratory notebooks
+│   ├── 1_analyse_dgl_creation.ipynb
+│   ├── 2_parameter_sweep-Copy1.ipynb
+├── requirements.txt
+└── src
+    ├── __init__.py
+    ├── common
+    │   └── formats.py
+    ├── exploration                             # 🎣 Exploring data (e.g. degree distributions)
+    │   ├── Marklines.py
+    │   ├── __init__.py
+    │   ├── dataset.py
+    │   ├── visualise_graph.py
+    │   └── visualise_knowledge_graph.py
+    ├── ingestion                               # Data loaders and utils for torch 🔥
+    │   ├── __init__.py
+    │   ├── dataloader.py
+    │   ├── dataset.py
+    │   ├── dgl_dataset.py
+    │   └── utils.py
+    ├── managers                                # Training and testing managers in torch 🔥
+    │   ├── evaluator.py
+    │   └── trainer.py
+    ├── model                                   # 🤖 DGL Models 
+    │   ├── __init__.py
+    │   └── dgl
+    │       ├── StochasticRGCN.py
+    │       ├── __init__.py
+    │       ├── __pycache__
+    │       │   ├── StochasticRGCN.cpython-39.pyc
+    │       │   ├── __init__.cpython-39.pyc
+    │       │   └── layers.cpython-39.pyc
+    │       └── layers.py
+```
 
