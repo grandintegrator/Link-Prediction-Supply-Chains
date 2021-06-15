@@ -564,20 +564,20 @@ class KnowledgeGraphGenerator(object):
 
         # Pickle self into path provided
         # source, destination
-        with open(self.save_graph_path + 'dataset.pickle', 'wb') as file_path:
-            logger.info('Saving graphs with the following dimensions:')
-            logger.info('====================================================')
-            logger.info(f'cG should have {len(self.cG_clean.edges)} edges')
-            logger.info(f'bG should have {len(self.bG_clean.edges)} edges')
-            logger.info(f'G should have {len(self.G_clean.edges)} edges')
-            logger.info(f'capability_product_graph should have {len(self.capability_product_graph.edges)} edges')
-            logger.info(f'company_capability_graph should have {len(self.company_capability_graph.edges)} edges')
-            logger.info(f'{len(self.capabilities_all)} Capabilities')
-            logger.info(f'{len(self.processes_all)} Processes')
-            logger.info(f'{len(self.companies_all)} Companies')
-            logger.info('====================================================')
-
-            pickle.dump(copy(self), file_path)
+        # with open(self.save_graph_path + 'dataset.pickle', 'wb') as file_path:
+        #     logger.info('Saving graphs with the following dimensions:')
+        #     logger.info('====================================================')
+        #     logger.info(f'cG should have {len(self.cG_clean.edges)} edges')
+        #     logger.info(f'bG should have {len(self.bG_clean.edges)} edges')
+        #     logger.info(f'G should have {len(self.G_clean.edges)} edges')
+        #     logger.info(f'capability_product_graph should have {len(self.capability_product_graph.edges)} edges')
+        #     logger.info(f'company_capability_graph should have {len(self.company_capability_graph.edges)} edges')
+        #     logger.info(f'{len(self.capabilities_all)} Capabilities')
+        #     logger.info(f'{len(self.processes_all)} Processes')
+        #     logger.info(f'{len(self.companies_all)} Companies')
+        #     logger.info('====================================================')
+        #
+        #     pickle.dump(copy(self), file_path)
         return copy(self)
 
     def load(self, from_scratch: bool = False,

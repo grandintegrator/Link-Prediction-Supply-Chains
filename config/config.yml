@@ -8,7 +8,7 @@ save_train_results: False
 
 # Which part of the pipeline to run.
 run_training: True
-run_validation: False
+run_validation: True
 run_testing: False
 
 #node_features:
@@ -24,31 +24,31 @@ from_scratch: False  # Recreate everything from scratch
 triplets_from_scratch: False  # Recreate all triplets
 
 # Data Engineering entries.
-capability_product_weight_cut: 200
+capability_product_weight_cut: 50
 cg_weight_cut: 30
 graph_save_path: 'data/02_intermediate/'
 plotting_path: 'data/04_results/'
 
 # Modelling parameters
-num_node_features: 15
+num_node_features: 20
 num_hidden_graph_layers: 16
-num_negative_samples: 3
+num_negative_samples: 50
 num_classes: 2
-batch_size: 64 # Mini batch size for the graph
+batch_size: 32 # Mini batch size for the graph
 num_epochs: 8000
 evaluate_every: 3 # How many epochs should pass before an evaluation run?
 test_p: 0.1
 valid_p: 0.2
 num_workers: 0
-loss: "binary_cross_entropy" # Or could also be 'margin'
+loss: "margin" # Or could also be 'margin'
 log_freq: 20
-eval_type: 'validation' # Validation or testing
+eval_type: 'Validation' # Validation or testing
 
 # Graph Neural Network training parameters (not mutually exclusive with above)
-lr: 1e-3
-optimiser: "Adam"
+lr: 1e-2
+optimiser: "SGD"
 l2_regularisation: 5e-4 # Regularisation term for the GNN weights
-
+momentum:  0.0005
 #testing:
 #  batch_size: 2048
 #  log_freq: 10

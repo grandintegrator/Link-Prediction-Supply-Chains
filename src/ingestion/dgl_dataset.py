@@ -346,9 +346,9 @@ class SupplyKnowledgeGraphDataset(DGLDataset):
         )
 
         logger.info('Triplets created for all entities in the KG')
-        self.triplets.to_parquet('../data/02_intermediate/triplets.parquet',
-                                 engine='pyarrow',
-                                 compression='gzip')
+        # self.triplets.to_parquet('data/02_intermediate/triplets.parquet',
+        #                          engine='pyarrow',
+        #                          compression='gzip')
         logger.info('Saved triplets frame...')
         return self.triplets
 

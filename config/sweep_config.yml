@@ -1,15 +1,15 @@
 num_node_features: # 20
   values: [2, 10, 20, 50, 100]
 num_hidden_graph_layers:
-  values: [16, 10, 100, 1000]
+  values: [16, 5, 100]
 num_negative_samples:
   values: [3, 10, 50]
 num_classes:
   value: 2
 batch_size: # 64 # Mini batch size for the graph
-  values: [12, 32, 64, 128]
+  values: [16, 32, 64, 128]
 num_epochs:
-  values: [8000, 2000, 500, 1000]
+  values: [8000, 2000, 1000]
 evaluate_every:
   value: 3 # How many epochs should pass before an evaluation run?
 test_p:
@@ -31,7 +31,7 @@ optimiser:
 l2_regularisation:
   values: [5e-4, 5e-3, 5e-2] # Regularisation term for the GNN weights
 momentum:
-  values: [ 5e-4, 5e-3, 5e-2 ] # Regularisation term for the GNN weights
+  values: [5e-4, 5e-3, 5e-2] # Regularisation term for the GNN weights
 device:
   value: 'cpu' # change to 'cuda' for GPU
 stream_wandb:
@@ -42,15 +42,14 @@ save_train_results:
   value: False
 # Some graph loading
 triplets_from_scratch:
-  value: False
+  value: True
 load_graph:
-  value: True # Loading the already saved DGL Graph into Memory
+  value: Falses # Loading the already saved DGL Graph into Memory
 from_scratch:
-  value: False  # Recreate everything from scratch
+  value: True  # Recreate everything from scratch
 capability_product_weight_cut:
-  value: 200
+  values: [50, 100, 200]
 cg_weight_cut:
   value: 30
 graph_save_path:
   value: 'data/02_intermediate/'
-

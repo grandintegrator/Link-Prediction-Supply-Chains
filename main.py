@@ -59,7 +59,7 @@ def main(run_args) -> None:
         metrics_test = evaluator.evaluate()
         logging.info('========================================================')
         logging.info(f'After {config.modelling.num_epochs} epochs \n')
-        logging.info(f"Got an AUC of  {metrics_test['auc_mean']}")
+        # logging.info(f"Got an AUC of  {metrics_test['auc_mean']}")
         logging.info('========================================================')
 
 

@@ -127,7 +127,7 @@ class SCDataLoader(object):
                 batch_size=self.params.batch_size,
                 shuffle=True,
                 drop_last=False,
-                # pin_memory=True,
+                pin_memory=True,
                 num_workers=self.params.num_workers)
             return valid_data_loader
         else:
