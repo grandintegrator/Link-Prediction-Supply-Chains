@@ -56,9 +56,16 @@ def main(run_args) -> None:
         save_best_metrics(path=config.plotting.path)
         logging.info('Saved Training results.')
     if config.run_validation:
-        metrics_test = evaluator.evaluate()
+        evaluator.evaluate()
+        save_best_metrics(path=config.plotting_path, training_results=False,
+                          validation_results=True, testing_results=False)
+    if config.run_testing:
+        evaluator.evaluate()
+        # metrics_test = evaluator.evaluate()
+        # save_best_metrics(path=config.plotting.path, training_results=False,
+        #                   validation_results=False, testing_results=True)
         logging.info('========================================================')
-        logging.info(f'After {config.modelling.num_epochs} epochs \n')
+        # logging.info(f'After {config.modelling.num_epochs} epochs \n')
         # logging.info(f"Got an AUC of  {metrics_test['auc_mean']}")
         logging.info('========================================================')
 

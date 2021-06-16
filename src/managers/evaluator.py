@@ -80,6 +80,8 @@ class Evaluator(object):
                     continue
                 with no_grad():
                     input_features = blocks[0].srcdata['feature']
+
+                    # 🔜 Forward pass through the network.
                     pos_score, neg_score = self.model(positive_graph=positive_graph,
                                                       negative_graph=negative_graph,
                                                       blocks=blocks,
