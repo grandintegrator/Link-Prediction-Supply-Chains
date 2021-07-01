@@ -157,14 +157,14 @@ class Trainer(object):
                 # Break if number of epochs has been satisfied
                 if step == self.params.num_epochs:
                     break
-
+    
     def train(self):
         # wandb login --relogin of you would like to log data into W&B
         self.make_optimiser()
         if self.params.stream_wandb:
             wandb.init(config=dict(self.params))
-            # wandb.watch(self.model, self.compute_loss, log="all",
-            #             log_freq=self.params.log_freq)
+            wandb.watch(self.model, self.compute_loss, log="all",
+                        log_freq=self.params.log_freq)
             for _ in range(1):
                 # Put model into training mode
                 self.model.train()
