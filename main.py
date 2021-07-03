@@ -53,7 +53,7 @@ def main(run_args) -> None:
         logging.info('Starting training of model...')
         trainer.train()
     if config.save_train_results:
-        save_best_metrics(path=config.plotting.path)
+        save_best_metrics(path=config.plotting_path)
         logging.info('Saved Training results.')
     if config.run_validation:
         evaluator.evaluate()

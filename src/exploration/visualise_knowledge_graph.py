@@ -3,7 +3,7 @@ import dash_cytoscape as cyto
 import dash_html_components as html
 import pandas as pd
 
-from exploration.visualise_graph import VisualiseGraph
+# from exploration.visualise_graph import VisualiseGraph
 # from exploration import VisualiseGraph
 #
 # from ingestion.dataloader import SupplyKnowledgeGraphDataset
@@ -13,7 +13,7 @@ from exploration.visualise_graph import VisualiseGraph
 # pair_frame.to_parquet('../data/02_intermediate/triplets.parquet',
 #                       engine='pyarrow', compression='gzip')
 
-pair_frame = pd.read_parquet('../data/02_intermediate/triplets.parquet')
+pair_frame = pd.read_parquet('../../data/02_intermediate/triplets.parquet')
 
 app = dash.Dash(__name__)
 
@@ -30,10 +30,10 @@ app = dash.Dash(__name__)
 # Create a nice set of companies, products, and capabilities to sample from.
 
 
-companies = ['Jiangsu Yuhua Automobile Parts',
-             'Danyang Boliang Lamps Factory',
-             'Bill Forge',
-             'Varta',
+companies = [#'Jiangsu Yuhua Automobile Parts',
+             # 'Danyang Boliang Lamps Factory',
+             # 'Bill Forge',
+             # 'Varta',
              'Mitsubishi Motors Europe',
              'Activline',
              'Fehrer',
@@ -51,7 +51,7 @@ cond = (
 pair_frame = pair_frame.loc[cond]
 # products = pair_frame.loc[pair_frame['relation_type'] == 'capability_produces']
 # pair_frame = pair_frame.loc[~(pair_frame['relation_type'] == 'capability_produces')]
-pair_frame = pair_frame.sample(n=40)
+# pair_frame = pair_frame.sample(n=10)
 # pair_frame = pd.concat([pair_frame, products.sample(n=20)], axis=0)
 # pair_frame = pair_frame.sample(n=100, random_state=1)
 
@@ -171,4 +171,4 @@ app.layout = html.Div([
 
 if __name__ == '__main__':
     app.run_server(debug=True,
-                   port=8051)
+                   port=8052)

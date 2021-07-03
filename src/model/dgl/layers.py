@@ -27,7 +27,7 @@ class StochasticTwoLayerRGCN(nn.Module):
         x = dict(map(lambda x: (x[0], F.leaky_relu(x[1])), x.items()))
         x = self.conv2(blocks[1], x)
         # x = dict(map(lambda x: (x[0], F.leaky_relu(x[1])), x.items()))
-        # x = dict(map(lambda x: (x[0], torch.sigmoid(x[1])), x.items()))
+        x = dict(map(lambda x: (x[0], torch.sigmoid(x[1])), x.items()))
         return x
 
     def inference(self, g, x, batch_size, device='cpu'):

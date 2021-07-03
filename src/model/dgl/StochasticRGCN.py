@@ -27,4 +27,3 @@ class Model(nn.Module):
         pos_score = self.pred(positive_graph, x)
         neg_score = self.pred(negative_graph, x)
         return pos_score, neg_score
-

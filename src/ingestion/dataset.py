@@ -326,6 +326,10 @@ class KnowledgeGraphGenerator(object):
                 Product -> Product (weights)
                 Capability -> Capability (weights)
 
+        >>> path = self.params.graph_save_path
+        >>> with open(path + 'cG.pickle', 'rb') as f:
+        >>>     self.cG = pickle.load(f)
+
         """
         # cG bipartite projection analysis.
         edge_df_cg = nx.to_pandas_edgelist(self.cG)
@@ -378,24 +382,27 @@ class KnowledgeGraphGenerator(object):
         sns.set_style('ticks')
         sns.set_style({"xtick.direction": "in", "ytick.direction": "in"})
         ax = sns.histplot(data,
-                     kde=False, color=sns.xkcd_rgb['red'],
-                     bins=15, alpha=1, log_scale=True, cumulative=False,
-                     kde_kws={'cumulative': True})
-        frequencies, _ = np.histogram(data)
-        ax.set_yticks(np.arange(0, max(frequencies)/2, 50e3))
+                          kde=False, color=sns.xkcd_rgb['strong blue'],
+                          bins=15, alpha=1, log_scale=(True, True),
+                          cumulative=False, linewidth=.8, edgecolor='k',
+                          kde_kws={'cumulative': True})
+        # frequencies, _ = np.histogram(data)
+        # ax.set_yticks(np.arange(0, max(frequencies)/2, 50e3))
 
-        plt.xlabel('Edge Weight (log)')
-        ax.set_title(r'Edge Weights in Product $\rightarrow$ Product Projection')
+        plt.xlabel('Projection Edge Weights (log)')
+        ax.set_title(r'Edge weights '
+                     '\n'
+                     r'Bipartite Projection Weights')
         plt.tight_layout()
         plt.gcf().subplots_adjust(left=0.2, right=0.8, top=0.8, bottom=0.2)
-        plt.ylabel('Frequency')
+        plt.ylabel('Frequency (log)')
 
-        # Second axis for total variation captured
-        ax2 = plt.twinx()
-        ax2.plot(data[1:], cdf)
-        ax2.set_yticks(np.arange(0, 120, 20))
-        ax2.set_ylabel('Proportion CDF (%)')
-        plt.savefig(self.params.plotting.path + 'cG_weights_histogram.png',
+        # # Second axis for total variation captured
+        # ax2 = plt.twinx()
+        # ax2.plot(data[1:], cdf)
+        # ax2.set_yticks(np.arange(0, 120, 20))
+        # ax2.set_ylabel('Proportion CDF (%)')
+        plt.savefig(self.params.plotting_path + 'cG_weights_histogram_tex.png',
                     bbox_inches='tight')
         plt.show()
 
@@ -417,13 +424,14 @@ class KnowledgeGraphGenerator(object):
         sns.histplot(capability_product_graph['weight'],
                      kde=False, color=sns.xkcd_rgb['red'],
                      bins=25, alpha=1, log_scale=True, cumulative=False,
+                     linewidth=.8, edgecolor='k',
                      kde_kws={'cumulative': True})
-        plt.xlabel('Edge Weight (log)')
-        plt.title(r'Edge Weights in Capability $\rightarrow$ Product Projection')
+        plt.xlabel('Co-occurrence count (log)')
+        plt.title(r'Co-occurrence frequency for (Capability $\rightarrow$ Product)')
         plt.tight_layout()
         plt.gcf().subplots_adjust(left=0.2, right=0.8, top=0.8, bottom=0.2)
         plt.ylabel('Frequency')
-        plt.savefig(self.params.plotting.path + 'capability_product_weights.png',
+        plt.savefig(self.params.plotting_path + 'capability_product_weights_latex.png',
                     bbox_inches='tight')
         plt.show()
 
@@ -557,7 +565,7 @@ class KnowledgeGraphGenerator(object):
         self.clean_and_generate_graphs()
         self.create_capability_capability()
         self.create_capability_product_graph()
-        # self.analyse_bipartite()
+        self.analyse_bipartite()
         self.cut_capability_product_graph()
         self.create_company_country_links()
         self.create_company_qualification_graph()

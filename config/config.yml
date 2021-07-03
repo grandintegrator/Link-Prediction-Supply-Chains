@@ -2,14 +2,14 @@ data:
   path: "/Users/tim-bhp/PycharmProjects/link_predictions_supply_chains/Link-Prediction-Supply-Chains/data/02_intermediate"
 
 device: 'cpu' # change to 'cuda' for GPU
-stream_wandb: True
+stream_wandb: False
 log_company_accuracy: False
 save_train_results: False
 
 # Which part of the pipeline to run.
 run_training: True
-run_validation: False
-run_testing: True
+run_validation: True
+run_testing: False
 
 #node_features:
 #  company: 20
@@ -28,6 +28,7 @@ capability_product_weight_cut: 200
 cg_weight_cut: 30
 graph_save_path: 'data/02_intermediate/'
 plotting_path: 'data/04_results/'
+model_save_path: 'data/03_models/'
 
 # Modelling parameters
 num_node_features: 15
@@ -35,14 +36,14 @@ num_hidden_graph_layers: 100
 num_negative_samples: 3
 num_classes: 2
 batch_size: 64 # Mini batch size for the graph
-num_epochs: 8000
+num_epochs: 50
 evaluate_every: 3 # How many epochs should pass before an evaluation run?
 test_p: 0.1
 valid_p: 0.2
 num_workers: 0
 loss: "margin" # Or could also be 'margin'
 log_freq: 10
-eval_type: 'Testing' # Validation or Testing
+eval_type: 'Validation' # Validation or Testing
 
 # Graph Neural Network training parameters (not mutually exclusive with above)
 lr: 0.001
@@ -52,3 +53,7 @@ momentum:  0.05
 #testing:
 #  batch_size: 2048
 #  log_freq: 10
+
+# I believe the below slows down training...
+save_validation_frame: True
+save_training_frame: True

@@ -1,12 +1,16 @@
+import numpy as np
+import pandas as pd
 from torch import cat, ones, zeros
 from torch import no_grad
 from sklearn.metrics import roc_auc_score
 from sklearn.metrics import average_precision_score
 from typing import Dict, Any
+from torch.nn import Sigmoid
 
 import tqdm
 import wandb
 import logging
+import uuid
 
 
 class Evaluator(object):
@@ -14,6 +18,12 @@ class Evaluator(object):
         self.params = params
         self.model = model
         self.testing_data_loader = testing_data_loader
+        self.sigmoid = Sigmoid()
+        self._scores_all = np.array([])
+        self._labels_all = np.array([])
+        self._link_type_list = list()
+        self._batch_id = list()
+        self.validation_frame = pd.DataFrame()
 
     @staticmethod
     def log_test_results(step, auc_dict, auc_pr_dict, log_freq,
@@ -34,14 +44,13 @@ class Evaluator(object):
                            eval_type + " " + auc_pr_edge: auc_pr_dict[auc_pr_edge]},
                           step=step)
 
-    @staticmethod
-    def compute_testing_auc_ap(pos_score, neg_score) -> Dict[str, Any]:
+    def compute_testing_auc_ap(self, sigmoid, pos_score, neg_score) -> Dict[str, Any]:
         # Compute the AUC per type
         auc_dict = {}
         ap_dict = {}
         for given_edge_type in pos_score.keys():
-            pos_score_edge = pos_score[given_edge_type]
-            neg_score_edge = neg_score[given_edge_type]
+            pos_score_edge = sigmoid(pos_score[given_edge_type])
+            neg_score_edge = sigmoid(neg_score[given_edge_type])
             if pos_score_edge.shape[0] == 0:
                 continue
             scores = (
@@ -50,11 +59,36 @@ class Evaluator(object):
             labels = cat(
                 [ones(pos_score_edge.shape[0]),
                  zeros(neg_score_edge.shape[0])]).detach().numpy()
+
+            if self.params.save_validation_frame:
+                self._scores_all = np.append(self._scores_all, scores.squeeze())
+                self._labels_all = np.append(self._labels_all,
+                                             labels.squeeze().astype('int'))
+                self._link_type_list.extend(
+                    [given_edge_type[1]] * len(scores.squeeze())
+                )
+                self._batch_id.extend([uuid.uuid4()] * len(scores.squeeze()))
+
             auc_dict['AUC ' + given_edge_type[1]] = \
                 roc_auc_score(labels, scores)
             ap_dict['AP ' + given_edge_type[1]] = \
                 average_precision_score(labels, scores)
         return {'AUC_DICT': auc_dict, 'AP_DICT': ap_dict}
+
+    def store_validation_frame(self) -> None:
+        logging.info('Saving validation outputs and labels.')
+        self.validation_frame = (
+            pd.DataFrame({'MODEL_SCORE': self._scores_all,
+                          'LABELS': self._labels_all,
+                          'LINK_TYPE': self._link_type_list,
+                          'BATCH_ID': self._batch_id})
+        )
+        self.validation_frame['BATCH_ID'] = (
+            self.validation_frame['BATCH_ID'].astype('str')
+        )
+        store_path = self.params.model_save_path + 'validation_frame.parquet'
+        self.validation_frame.to_parquet(store_path, compression='gzip',
+                                         engine='pyarrow')
 
     def evaluate(self) -> None:
         """Function evaluates the model on all batches and saves all values
@@ -87,7 +121,8 @@ class Evaluator(object):
                                                       blocks=blocks,
                                                       x=input_features)
 
-                    auc_pr_dicts = self.compute_testing_auc_ap(pos_score,
+                    auc_pr_dicts = self.compute_testing_auc_ap(self.sigmoid,
+                                                               pos_score,
                                                                neg_score)
                     if self.params.stream_wandb:
                         self.log_test_results(step, auc_pr_dicts['AUC_DICT'],
@@ -126,3 +161,4 @@ class Evaluator(object):
             # print(auc_all)
             # return {'auc_mean': sum(auc_all)/len(auc_all),
             #         'auc_all': roc_auc_score(labels_all, scores_all)}
+        self.store_validation_frame()

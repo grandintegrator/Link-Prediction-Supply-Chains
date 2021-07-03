@@ -1,11 +1,15 @@
 import logging
 import tqdm
+import uuid
 import wandb
 import torch
 import torch.optim as optim
 import torch.nn.functional as F
 import pandas as pd
+import numpy as np
+
 from torch import cat, ones, zeros
+from torch.nn import Sigmoid
 from sklearn.metrics import roc_auc_score
 from sklearn.metrics import average_precision_score
 from typing import Dict, Any
@@ -20,6 +24,14 @@ class Trainer(object):
         self.train_data_loader = train_data_loader
         self.predictor = ScorePredictor().to(params.device)
         self.opt = None
+        self.sigmoid = Sigmoid()
+
+        # For storing uncertainty from the model.
+        self.training_certainty_frame = pd.DataFrame()
+        self._scores_all = np.array([])
+        self._labels_all = np.array([])
+        self._link_type_list = list()
+        self._batch_id = list()
 
         if self.params.log_company_accuracy:
             save_path = self.params.graph_save_path
@@ -49,8 +61,8 @@ class Trainer(object):
         assert pos_score.keys() == neg_score.keys()
         all_losses = []
         for given_type in pos_score.keys():
-            pos_score_edge = pos_score[given_type]
-            neg_score_edge = neg_score[given_type]
+            pos_score_edge = self.sigmoid(pos_score[given_type])
+            neg_score_edge = self.sigmoid(neg_score[given_type])
             n = pos_score_edge.shape[0]
             if n == 0:
                 continue
@@ -73,14 +85,14 @@ class Trainer(object):
                 all_losses.append(binary_cross_entropy)
         return torch.stack(all_losses, dim=0).mean()
 
-    @staticmethod
-    def compute_train_auc_ap(pos_score, neg_score) -> Dict[str, Any]:
+    def compute_train_auc_ap(self, sigmoid, pos_score,
+                             neg_score) -> Dict[str, Any]:
         # Compute the AUC per type
         auc_dict = {}
         ap_dict = {}
         for given_edge_type in pos_score.keys():
-            pos_score_edge = pos_score[given_edge_type]
-            neg_score_edge = neg_score[given_edge_type]
+            pos_score_edge = sigmoid(pos_score[given_edge_type])
+            neg_score_edge = sigmoid(neg_score[given_edge_type])
             if pos_score_edge.shape[0] == 0:
                 continue
             scores = (
@@ -89,6 +101,16 @@ class Trainer(object):
             labels = cat(
                 [ones(pos_score_edge.shape[0]),
                  zeros(neg_score_edge.shape[0])]).detach().numpy()
+
+            if self.params.save_training_frame:
+                self._scores_all = np.append(self._scores_all, scores.squeeze())
+                self._labels_all = np.append(self._labels_all,
+                                             labels.squeeze().astype('int'))
+                self._link_type_list.extend(
+                    [given_edge_type[1]] * len(scores.squeeze())
+                )
+                self._batch_id.extend([uuid.uuid4()] * len(scores.squeeze()))
+
             auc_dict['AUC ' + given_edge_type[1]] = \
                 roc_auc_score(labels, scores)
             ap_dict['AP ' + given_edge_type[1]] = \
@@ -142,7 +164,8 @@ class Trainer(object):
                 # # Logging
                 if (step + 1) % self.params.log_freq == 0:
                     # Compute some training set statistics
-                    auc_pr_dicts = self.compute_train_auc_ap(pos_score,
+                    auc_pr_dicts = self.compute_train_auc_ap(self.sigmoid,
+                                                             pos_score,
                                                              neg_score)
 
                     if self.params.log_company_accuracy:
@@ -176,8 +199,25 @@ class Trainer(object):
                 self.model.train()
                 self.train_epoch()
 
-        if self.params.save_train_results:
-            save_best_metrics(self.params.plotting_path)
+        if self.params.save_training_frame:
+            # save_best_metrics(self.params.plotting_path)
+            self.store_training_frame()
+            # TODO: Save best model as well so no need to retrain.
+
+    def store_training_frame(self) -> None:
+        logging.info('Saving training outputs and labels.')
+        self.training_certainty_frame = (
+            pd.DataFrame({'MODEL_SCORE': self._scores_all,
+                          'LABELS': self._labels_all,
+                          'LINK_TYPE': self._link_type_list,
+                          'BATCH_ID': self._batch_id})
+        )
+        self.training_certainty_frame['BATCH_ID'] = (
+            self.training_certainty_frame['BATCH_ID'].astype('str')
+        )
+        store_path = self.params.model_save_path + 'training_frame.parquet'
+        self.training_certainty_frame.to_parquet(store_path, compression='gzip',
+                                                 engine='pyarrow')
 
     def __repr__(self):
         return "Training Manager class"
