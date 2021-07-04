@@ -89,7 +89,7 @@ auprc_type2 = auc(recall_type2, precision_type2)
 auprc_type_all = auc(recall_type_all, precision_type_all)
 
 baseline_type1 = error_type1.mean()
-baseline_type2 = error_type1.mean()
+baseline_type2 = error_type2.mean()
 baseline_all = error_all.mean()
 
 lift_type1 = auprc_type1/ baseline_type1
