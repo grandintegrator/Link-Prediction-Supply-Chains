@@ -110,6 +110,7 @@ ax1.boxplot([y_unc[indices_tp],
 
 ax1.set_xticklabels(["TP","TN","TP+TN","Type 1 (FP)","Type 2 (FN)", "FP+FN"])
 ax1.set_ylabel("Uncertainty")
+ax1.set_title(link_types[link_index])
 
 print("AUPRC-TYPE1 (TP VS FP): {:.2f} , BASELINE: {:.3f}, AUPRC-RATIO: {:.2f}".format(auprc_type1, baseline_type1, lift_type1))
 print("AUPRC-TYPE2 (TN VS FN): {:.2f} , BASELINE: {:.3f}, AUPRC-RATIO: {:.2f}".format(auprc_type2, baseline_type2, lift_type2))
