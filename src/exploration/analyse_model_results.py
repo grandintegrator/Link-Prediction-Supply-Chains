@@ -77,6 +77,82 @@ plt.savefig(home_dir + f"{config['link_type']}_saved.png",
 plt.show()
 
 ################################################################################
+# Uncertainty plots:
+################################################################################
+base_store_path = 'Link-Prediction-Supply-Chains/data/03_models/'
+valid_batches = (
+    pd.read_parquet(base_store_path + 'validation_frame.parquet')
+)
+
+valid_batches['MODEL_UNCERTAINTY'] = (
+    valid_batches['MODEL_SCORE']*(1-valid_batches['MODEL_SCORE'])
+)
+
+# batch, frame = next(iter(valid_batches.groupby('BATCH_ID')))
+
+
+def label_pred(row):
+    score = row['MODEL_SCORE']
+    label = row['LABELS']
+
+    if score >= 0.7 and label == 1.0:
+        return 'True Positive'
+    if score >= 0.7 and label == 0.0:
+        return 'False Positive'
+    if score < 0.7 and label == 1.0:
+        return 'False Negative'
+    if score < 0.7 and label == 0.0:
+        return 'True Negative'
+
+
+valid_batches['CONFUSION_QUAD'] = valid_batches.apply(label_pred, axis=1)
+valid_batches.head()
+
+batch, frame = next(iter(valid_batches.groupby('BATCH_ID')))
+
+sns.boxplot(y='CONFUSION_QUAD',
+            x='MODEL_UNCERTAINTY',
+            data=valid_batches.sample(10000))
+            # hue="LINK_TYPE")
+plt.ylabel('Score')
+plt.xlabel('Model Uncertainty')
+plt.xticks(rotation=90)
+plt.tight_layout()
+plt.legend(bbox_to_anchor=(1.05, 1), loc=2, borderaxespad=0.)
+plt.show()
+
+
+from sklearn.metrics import roc_auc_score
+_link = valid_batches.groupby('LINK_TYPE').get_group("buys_from")
+auc = roc_auc_score(_link['LABELS'].astype('int'), _link['MODEL_SCORE'])
+sns.distplot(x=valid_batches['MODEL_SCORE'],
+             hist=False)
+plt.xlabel('Model Score')
+plt.ylabel('Density')
+# plt.title(r'Uncertainty for buys\_from, AUC (Validation): 0.84')
+plt.tight_layout()
+plt.show()
+
+
+
+
+
+# g = sns.FacetGrid(valid_batches.head(500), col="LINK_TYPE", col_wrap=3)
+# g.map_dataframe(sns.histplot, x="MODEL_UNCERTAINTY")
+# g.set_axis_labels("Uncertainty", "Frequency")
+# g.add_legend()
+# # plt.xticks(rotation=45)
+# # for axes in g.axes.flat:
+# #     _ = axes.set_xticklabels(axes.get_xticklabels(), rotation=90)
+# plt.tight_layout()
+# plt.show()
+
+
+tp = valid_batches.groupby('CONFUSION_QUAD').get_group("True Positive")
+sns.scatterplot(x='MODEL_SCORE')
+
+
+################################################################################
 # Parallel coordinate plots:
 ################################################################################
 # pio.templates.default = "plotly_white"
@@ -139,4 +215,57 @@ plt.show()
 #
 # fig.write_html(home_dir + '/parallel_coordinate_plot.html')
 #
+
+################################################################################
+# Businesses in the UK data
+################################################################################
+base_store_path = 'Link-Prediction-Supply-Chains/data/01_raw/'
+out_path = 'Link-Prediction-Supply-Chains/data/04_results/'
+
+births_and_deaths = \
+    pd.read_csv(base_store_path + 'businesses_births_deaths.csv')
+
+
+plt.figure(figsize=(10, 5))
+sns.lineplot(x='DATE',
+             y='value',
+             hue='variable',
+             data=births_and_deaths.melt('DATE'),
+             palette={'BIRTHS_A': '#0b559f', 'DEATHS_A': '#e50000'})
+plt.title('UK Transportation Manufacturing Firm Births and Deaths from 2014 to 2019')
+plt.ylabel('Count')
+plt.xlabel('Year')
+plt.legend(['Births', 'Deaths'])
+plt.tight_layout()
+plt.savefig(out_path + 'trending_births_deaths_saved.png',
+            bbox_inches='tight')
+plt.show()
+
+
+# Survival likelihood:
+survials = pd.DataFrame({'1 year': 92.5,
+                         '2 years': 75.8010876236422,
+                         '3 years': 61.22,
+                         '4 years': 49.3056051155422,
+                         '5 years': 42.4972523943421},
+                        index=range(5)).T
+survials = survials[0].reset_index(drop=False).rename(columns={'index': 'Years',
+                                                               0: 'Likelihood of Survival'})
+
+plt.figure(figsize=(10, 5))
+sns.lineplot(x='Years',
+             y=r'Likelihood of Survival',
+             color=sns.xkcd_rgb['royal blue'],
+             data=survials)
+plt.title('Likelihood of Firm Survival if Established in 2014 in the UK (all sectors)')
+plt.ylabel(r'Likelihood of Survival (\%)')
+plt.xlabel('Years after 2014')
+# plt.legend(['Births', 'Deaths'])
+plt.tight_layout()
+plt.savefig(out_path + 'likelihood_of_survival.png',
+            bbox_inches='tight')
+plt.show()
+
+
+
 

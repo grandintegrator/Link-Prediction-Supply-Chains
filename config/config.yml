@@ -36,7 +36,7 @@ num_hidden_graph_layers: 100
 num_negative_samples: 3
 num_classes: 2
 batch_size: 64 # Mini batch size for the graph
-num_epochs: 50
+num_epochs: 8000
 evaluate_every: 3 # How many epochs should pass before an evaluation run?
 test_p: 0.1
 valid_p: 0.2
