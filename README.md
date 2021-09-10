@@ -47,6 +47,19 @@ TODO: Topics to mention:
 - Graph Neural Networks for large scale KG Completion
 - 
 
+## Citing Our Work
+
+If you find this implementation useful, please consider citing the following article.
+
+```
+@article{
+author = {Aziz, Ajmal and Kosasih, Edward and Griffiths, Ryan-Rhys and Brintrup, Alexandra},
+journal = {International Conference for Machine Learning (ICML) workshop on ML4Data},
+year = {2021},
+month = {07},
+title = {Data Considerations in Graph Representation Learning for Supply Chain Networks}
+}
+```
 
 ## Solution Filestructure - Multiclass classification Graph Neural Network (DGL)
 
@@ -107,4 +120,3 @@ The file structure is laid out as follows:
     │       │   └── layers.cpython-39.pyc
     │       └── layers.py
 ```
-
