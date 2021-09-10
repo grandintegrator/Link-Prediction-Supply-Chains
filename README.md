@@ -39,14 +39,6 @@ Edges | Number
 ('company', 'makes_product', 'product')| 119,618
 ('product', 'complimentary_product_to', 'product') | 260,658
 
-
-
-## Relational Graph Neural Networks (GraphSAGE)
-TODO: Topics to mention:
-- Inductive vs transductive learning
-- Graph Neural Networks for large scale KG Completion
-- 
-
 ## Citing Our Work
 
 If you find this implementation useful, please consider citing the following article.
