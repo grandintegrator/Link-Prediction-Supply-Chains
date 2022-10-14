@@ -61,7 +61,7 @@ nbformat==5.1.3
 nest-asyncio==1.5.1
 networkx==2.5.1
 notebook==6.4.10
-numpy==1.21.0
+numpy==1.22.0
 ogb==1.3.1
 outdated==0.2.1
 packaging==20.9
